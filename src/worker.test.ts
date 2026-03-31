@@ -204,6 +204,14 @@ describe("worker", () => {
     await expect(response.text()).resolves.toContain("--color-app-canvas:#f5efe6");
   });
 
+  it("serves the home page interaction script", async () => {
+    const response = await handleRequest(new Request("http://example.com/home.js"), createTestEnv());
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/javascript");
+    await expect(response.text()).resolves.toContain("const channelColumns");
+  });
+
   it("clears the session cookie on logout", async () => {
     const response = await handleRequest(new Request("http://example.com/logout", { method: "POST" }), createTestEnv());
 

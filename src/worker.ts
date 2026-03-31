@@ -12,10 +12,10 @@ import {
 import type { Env, ScheduledControllerLike } from "./app-env";
 import { appRoutes } from "./app-routes";
 import { runAutomatedBackup } from "./backup";
-import { renderHomePage } from "./views/home";
+import { HOME_PAGE_SCRIPT, renderHomePage } from "./views/home";
 import { renderLoginPage } from "./views/login";
 import { renderNotFoundPage } from "./views/not-found";
-import { cssResponse, htmlResponse, redirectResponse } from "./views/shared";
+import { cssResponse, htmlResponse, javascriptResponse, redirectResponse } from "./views/shared";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -36,6 +36,10 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
 
   if (url.pathname === "/styles.css") {
     return cssResponse(await loadStylesheet());
+  }
+
+  if (url.pathname === "/home.js") {
+    return javascriptResponse(HOME_PAGE_SCRIPT);
   }
 
   if (url.pathname === "/api/health") {

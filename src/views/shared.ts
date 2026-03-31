@@ -18,6 +18,16 @@ export function cssResponse(body: string): Response {
   });
 }
 
+export function javascriptResponse(body: string): Response {
+  return new Response(body, {
+    status: 200,
+    headers: {
+      "content-type": "text/javascript; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
+}
+
 export function redirectResponse(location: string, init: ResponseInit = {}): Response {
   const headers = new Headers(init.headers);
   headers.set("location", location);

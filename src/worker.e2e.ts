@@ -9,10 +9,19 @@ test("requires login before showing the application home", async ({ page }) => {
   await page.getByRole("button", { name: "Sign in" }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: "Social Media Scheduler" })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "Compose post" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Channel drafts" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "LinkedIn" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "X" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Bluesky" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Queued posts" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add to queue" })).toBeVisible();
   await expect(page.getByRole("link", { name: "/api/health" })).toBeVisible();
+
+  await page.getByLabel("X post copy").fill("Queue this X draft for the afternoon slot.");
+  await page.getByLabel("X queue slot").selectOption("Today, 16:30");
+  await page.getByRole("button", { name: "Queue post" }).nth(1).click();
+
+  await expect(page.locator("[data-metric-queued]")).toHaveText("5");
+  await expect(page.locator("[data-queued-posts] article").first()).toContainText("Queue this X draft for the afternoon slot.");
 });
 
 test("serves the health endpoint", async ({ request }) => {

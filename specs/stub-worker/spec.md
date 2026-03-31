@@ -15,7 +15,7 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 ### Architecture
 
 - **Entry points:** `wrangler dev` via `src/worker.ts`, `npm run account:create` for auth user management, and the Worker scheduled handler for automated backups
-- **Source layout:** `src/worker.ts` routes requests, `src/auth/` holds auth primitives and D1-backed auth state helpers, `src/backup/` holds the backup export flow, `src/api/` holds API handlers, and `src/views/` holds HTML rendering modules.
+- **Source layout:** `src/worker.ts` routes requests, `src/auth/` holds auth primitives and D1-backed auth state helpers, `src/backup/` holds the backup export flow, `src/queue/` holds channel constraint logic, `src/api/` holds API handlers, and `src/views/` holds HTML rendering modules plus the home-page interaction script.
 - **Styling pipeline:** `src/tailwind-input.css` compiles to `.generated/styles.css`, which the Worker serves at `/styles.css`.
 - **Data models:** D1 stores `app_users`, `login_attempts`, generic `app_state`, and reserved `app_secrets`. R2 stores backup exports, summaries, and manifests when configured.
 - **Dependencies:** Wrangler provides the Worker runtime, D1, R2, and scheduled triggers; Playwright and Vitest verify the behavior.
@@ -33,7 +33,8 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 
 - [ ] Anonymous requests to `/` redirect to `/login`.
 - [ ] `POST /login` authenticates a D1-backed account and sets a signed session cookie.
-- [ ] Authenticated requests to `/` return a visible queue-planning page for the scheduler.
+- [ ] Authenticated requests to `/` return a visible queue-planning page with separate LinkedIn, X, and Bluesky columns.
+- [ ] The queue UI applies channel-specific copy budgets and lightweight client-side queue interactions.
 - [ ] The health route returns stable JSON for smoke tests and tooling.
 - [ ] The scheduled handler writes backup artifacts to R2 when configured and skips when the export content is unchanged.
 - [ ] The spec is updated in the same change set.
@@ -43,6 +44,7 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 
 - `GET /` must not expose the scheduler page to anonymous users.
 - `GET /login` must remain usable as the local sign-in entry point.
+- `GET /home.js` must keep returning the lightweight client-side queue behavior script.
 - `GET /styles.css` must keep returning the generated stylesheet.
 - `GET /api/health` must keep returning HTTP 200 JSON with `ok: true`.
 - Session cookies must stay signed with `SESSION_SECRET` and marked `HttpOnly`.
@@ -72,7 +74,13 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 
 - Given: the operator is already authenticated
 - When: they open `/`
-- Then: they see a composer area plus a queued-post list that sketches the future scheduling workflow
+- Then: they see separate LinkedIn, X, and Bluesky draft columns plus a queued-post list that sketches the future scheduling workflow
+
+**Scenario: Operator queues a draft from a channel column**
+
+- Given: the operator is already authenticated
+- When: they edit a channel draft and click `Queue post`
+- Then: the client-side mock queue prepends that post into the queued-post list and updates queue metrics without a full page reload
 
 **Scenario: Tooling checks app health**
 

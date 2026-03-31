@@ -1,4 +1,6 @@
+import { CHANNEL_CONSTRAINTS, describeUsage, type QueueChannel } from "../queue/constraints";
 import { escapeHtml } from "./shared";
+import { HOME_PAGE_SCRIPT } from "./home-ui";
 
 const appTitle = "Social Media Scheduler";
 const appDescription = "A private workspace for planning and reviewing social posts across personal projects.";
@@ -15,12 +17,100 @@ export function renderHomePage({ backupConfigured, user }: HomePageOptions): str
   const backupStatus = backupConfigured
     ? "R2 backup binding detected. Scheduled backups can write manifests and exports."
     : "R2 backup binding is not configured yet. Auth works locally without it, but scheduled backups will skip.";
+  const channelDrafts = [
+    {
+      id: "linkedin" as QueueChannel,
+      subtitle: "Longer project update",
+      accent: "Professional update",
+      content:
+        "Shipping a quieter but more useful improvement this week: the scheduler now has private auth, backup groundwork, and a clearer queue surface for planning content across personal projects. Next I am splitting publishing logic by channel so each post can respect the norms of the platform instead of forcing one message everywhere.",
+      slot: "Tomorrow, 09:00",
+    },
+    {
+      id: "x" as QueueChannel,
+      subtitle: "Short post with tighter budget",
+      accent: "Tight summary",
+      content:
+        "Built the first queue UI for the social scheduler today. Auth and backups are in, and now I’m shaping separate post flows for LinkedIn, X, and Bluesky so each channel gets content that actually fits.",
+      slot: "Today, 16:30",
+    },
+    {
+      id: "bluesky" as QueueChannel,
+      subtitle: "Short post with room for voice",
+      accent: "Concise status post",
+      content:
+        "Sketching the channel-specific queue now: LinkedIn gets the fuller project note, X gets the compressed headline, and Bluesky gets the in-between version with a bit more personality. Real adapters come next.",
+      slot: "Thu, 11:15",
+    },
+  ];
+  const channelDraftsMarkup = channelDrafts
+    .map((draft) => {
+      const constraint = CHANNEL_CONSTRAINTS.find((item) => item.id === draft.id);
+      if (!constraint) {
+        return "";
+      }
+
+      const usage = describeUsage(draft.id, draft.content);
+      const stateClass =
+        usage.state === "over"
+          ? "bg-amber-50 text-amber-900"
+          : usage.state === "warning"
+            ? "bg-app-canvas text-app-text"
+            : "bg-app-accent text-white";
+
+      return `<section class="flex flex-col rounded-xl border border-app-line bg-white p-6" data-channel-column data-channel-id="${escapeHtml(draft.id)}" data-channel-limit="${constraint.limit}">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">${escapeHtml(draft.accent)}</p>
+            <h2 class="mt-2 text-lg font-semibold tracking-[-0.02em]">${escapeHtml(constraint.name)}</h2>
+            <p class="mt-1 text-sm leading-6 text-app-text-soft">${escapeHtml(draft.subtitle)}</p>
+          </div>
+          <span class="rounded-full ${stateClass} px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em]" data-channel-status>${escapeHtml(
+            usage.state === "over" ? "Over limit" : usage.state === "warning" ? "Close to limit" : "Ready",
+          )}</span>
+        </div>
+        <label class="mt-5 grid gap-2 text-sm font-medium">
+          <span>${escapeHtml(constraint.name)} post copy</span>
+          <textarea class="min-h-52 rounded-xl border border-app-line bg-app-canvas/40 px-4 py-3 text-sm leading-6 text-app-text outline-none transition placeholder:text-app-text-soft/70 focus:border-app-accent focus:ring-2 focus:ring-app-accent/10" data-channel-input aria-label="${escapeHtml(constraint.name)} post copy">${escapeHtml(
+            draft.content,
+          )}</textarea>
+        </label>
+        <div class="mt-4 grid gap-3">
+          <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Constraint</p>
+                <p class="mt-2 text-sm font-medium text-app-text">${escapeHtml(constraint.limitLabel)}</p>
+              </div>
+              <span class="text-sm font-medium text-app-text" data-channel-count>${escapeHtml(usage.label)}</span>
+            </div>
+          </div>
+          <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
+            <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Channel note</p>
+            <p class="mt-2 text-sm leading-6 text-app-text-soft">${escapeHtml(constraint.notes)}</p>
+          </div>
+          <label class="grid gap-2 text-sm font-medium">
+            <span>Queue slot</span>
+            <select class="rounded-xl border border-app-line bg-white px-4 py-3 text-sm text-app-text outline-none transition focus:border-app-accent focus:ring-2 focus:ring-app-accent/10" data-channel-slot aria-label="${escapeHtml(constraint.name)} queue slot">
+              <option>${escapeHtml(draft.slot)}</option>
+              <option>Next available slot</option>
+              <option>Tomorrow, 13:00</option>
+            </select>
+          </label>
+        </div>
+        <div class="mt-5 flex flex-wrap gap-3">
+          <button class="rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-app-accent-strong" type="button" data-queue-button>Queue post</button>
+          <button class="rounded-xl border border-app-line bg-white px-4 py-3 text-sm font-semibold text-app-text transition hover:bg-app-canvas" type="button">Save draft</button>
+        </div>
+      </section>`;
+    })
+    .join("");
   const queuedPosts = [
     {
-      channel: "Mastodon",
-      project: "Static Site Refresh",
+      channel: "X",
+      project: "Scheduler Update",
       time: "Today, 16:30",
-      body: "Shipping a smaller navigation pass and cleaning up the homepage spacing before the next content drop.",
+      body: "Built the first channel-specific queue flow so short updates can stay tight without squeezing the longer formats.",
       status: "Ready",
     },
     {
@@ -38,10 +128,10 @@ export function renderHomePage({ backupConfigured, user }: HomePageOptions): str
       status: "Ready",
     },
     {
-      channel: "X / Twitter",
-      project: "Release Note",
+      channel: "LinkedIn",
+      project: "Process Note",
       time: "Fri, 14:00",
-      body: "A short thread about the latest project cleanup and what still needs to be automated.",
+      body: "A clearer write-up about why the scheduler treats each channel as its own draft instead of mirroring one post everywhere.",
       status: "Review",
     },
   ];
@@ -72,6 +162,7 @@ export function renderHomePage({ backupConfigured, user }: HomePageOptions): str
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${escapeHtml(appTitle)}</title>
     <link rel="stylesheet" href="/styles.css">
+    <script type="module" src="/home.js"></script>
   </head>
   <body class="min-h-screen bg-app-canvas text-app-text antialiased">
     <main class="mx-auto w-[min(64rem,calc(100vw-2rem))] py-10 sm:py-14">
@@ -92,55 +183,29 @@ export function renderHomePage({ backupConfigured, user }: HomePageOptions): str
             </div>
           </div>
         </section>
-        <div class="grid gap-4 px-5 py-5 sm:px-8 sm:py-8 lg:grid-cols-[1.2fr_0.8fr]">
+        <div class="grid gap-4 px-5 py-5 sm:px-8 sm:py-8">
           <section class="rounded-xl border border-app-line bg-white p-6">
             <div class="flex items-center justify-between gap-3">
               <div>
-                <h2 class="text-lg font-semibold tracking-[-0.02em]">Compose post</h2>
-                <p class="mt-1 text-sm leading-6 text-app-text-soft">Draft the next message, choose channels, and drop it into the queue.</p>
+                <h2 class="text-lg font-semibold tracking-[-0.02em]">Channel drafts</h2>
+                <p class="mt-1 text-sm leading-6 text-app-text-soft">Separate columns for LinkedIn, X, and Bluesky with lightweight queue behavior and channel-specific limits.</p>
               </div>
-              <span class="rounded-full bg-app-canvas px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Mockup</span>
+              <span class="rounded-full bg-app-canvas px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Mockup + interaction</span>
             </div>
-            <div class="mt-5 grid gap-4">
-              <label class="grid gap-2 text-sm font-medium">
-                <span>Post copy</span>
-                <textarea class="min-h-36 rounded-xl border border-app-line bg-app-canvas/40 px-4 py-3 text-sm leading-6 text-app-text outline-none transition placeholder:text-app-text-soft/70 focus:border-app-accent focus:ring-2 focus:ring-app-accent/10" placeholder="Share progress on the next release, note what changed, and mention where people can follow along.">Spent the morning tightening the auth flow and backup setup. Next up is turning the queue into something I can actually publish from.</textarea>
-              </label>
-              <div class="grid gap-2 text-sm font-medium">
-                <span>Channels</span>
-                <div class="flex flex-wrap gap-2">
-                  <span class="rounded-full border border-app-line bg-app-accent px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-white">Mastodon</span>
-                  <span class="rounded-full border border-app-line bg-app-canvas px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-app-text">Bluesky</span>
-                  <span class="rounded-full border border-app-line bg-app-canvas px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-app-text">LinkedIn</span>
-                </div>
-              </div>
-              <div class="grid gap-3 sm:grid-cols-2">
-                <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
-                  <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Publish slot</p>
-                  <p class="mt-2 text-sm font-medium text-app-text">Today at 16:30</p>
-                </div>
-                <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
-                  <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Assets</p>
-                  <p class="mt-2 text-sm font-medium text-app-text">1 image pending</p>
-                </div>
-              </div>
-              <div class="flex flex-wrap gap-3">
-                <button class="rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-app-accent-strong" type="button">Add to queue</button>
-                <button class="rounded-xl border border-app-line bg-white px-4 py-3 text-sm font-semibold text-app-text transition hover:bg-app-canvas" type="button">Save draft</button>
-              </div>
-            </div>
+            <div class="mt-5 grid gap-4 xl:grid-cols-3">${channelDraftsMarkup}</div>
           </section>
-          <section class="grid gap-4">
+          <section class="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+            <section class="grid gap-4">
             <section class="rounded-xl border border-app-line bg-white p-6">
               <h2 class="text-lg font-semibold tracking-[-0.02em]">Queue overview</h2>
               <div class="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
                 <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
                   <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Queued</p>
-                  <p class="mt-2 text-2xl font-semibold text-app-text">4</p>
+                  <p class="mt-2 text-2xl font-semibold text-app-text" data-metric-queued>4</p>
                 </div>
                 <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
                   <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Publishing today</p>
-                  <p class="mt-2 text-2xl font-semibold text-app-text">2</p>
+                  <p class="mt-2 text-2xl font-semibold text-app-text" data-metric-today>2</p>
                 </div>
                 <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
                   <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Connected channels</p>
@@ -155,15 +220,16 @@ export function renderHomePage({ backupConfigured, user }: HomePageOptions): str
               <p class="mt-4 text-sm text-app-text-soft">Health probe: <a class="font-semibold text-app-accent-strong underline decoration-app-accent/25 underline-offset-4" href="/api/health">/api/health</a></p>
             </section>
           </section>
-          <section class="rounded-xl border border-app-line bg-white p-6 lg:col-span-2">
+          <section class="rounded-xl border border-app-line bg-white p-6">
             <div class="flex items-center justify-between gap-3">
               <div>
                 <h2 class="text-lg font-semibold tracking-[-0.02em]">Queued posts</h2>
-                <p class="mt-1 text-sm leading-6 text-app-text-soft">A simple preview of what is waiting to be published next.</p>
+                <p class="mt-1 text-sm leading-6 text-app-text-soft">A simple preview of what is waiting to be published next across the broader queue.</p>
               </div>
               <span class="text-sm font-medium text-app-text-soft">Next 48 hours</span>
             </div>
-            <div class="mt-5 grid gap-3">${queuedPostsMarkup}</div>
+            <div class="mt-5 grid gap-3" data-queued-posts>${queuedPostsMarkup}</div>
+          </section>
           </section>
         </div>
       </article>
@@ -171,3 +237,5 @@ export function renderHomePage({ backupConfigured, user }: HomePageOptions): str
   </body>
 </html>`;
 }
+
+export { HOME_PAGE_SCRIPT };
