@@ -1,0 +1,52 @@
+{
+  "name": "vibe-template",
+  "private": true,
+  "packageManager": "npm@11.11.0",
+  "engines": {
+    "node": "24.14.1",
+    "npm": "11.11.0"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "npm",
+      "version": "11.11.0",
+      "onFail": "error"
+    }
+  },
+  "scripts": {
+    "build:css": "mkdir -p ./.generated && tailwindcss -i ./src/tailwind-input.css -o ./.generated/styles.css --minify",
+    "ci:local": "agent-ci run --workflow .github/workflows/ci.yml",
+    "ci:local:quiet": "agent-ci run --quiet --workflow .github/workflows/ci.yml",
+    "ci:local:all": "agent-ci run --all",
+    "ci:local:retry": "agent-ci retry",
+    "deploy": "wrangler deploy",
+    "dev": "HOME=$PWD wrangler dev --local --ip 127.0.0.1 --port 8787 --inspector-ip 127.0.0.1 --inspector-port 9229 --log-level error --show-interactive-dev-session=false",
+    "e2e": "playwright test --pass-with-no-tests",
+    "e2e:server": "CHOKIDAR_USEPOLLING=1 CHOKIDAR_INTERVAL=200 HOME=$PWD wrangler dev --local --ip 127.0.0.1 --port 8788 --inspector-ip 127.0.0.1 --inspector-port 9230 --log-level error --show-interactive-dev-session=false",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lighthouse": "node ./scripts/run-lighthouse.mjs",
+    "playwright:install": "playwright install chromium",
+    "quality:gate": "npm run quality:gate:fast && npm run quality:gate:browser",
+    "quality:gate:browser": "npm run e2e",
+    "quality:gate:fast": "npm run format:check && npm run typecheck && npm run security:audit && npm run test:coverage",
+    "security:audit": "npm audit --omit=dev --audit-level high",
+    "test": "vitest run --passWithNoTests",
+    "test:coverage": "node ./scripts/run-coverage-gate.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2",
+    "@redwoodjs/agent-ci": "0.6.0",
+    "@tailwindcss/cli": "4.2.2",
+    "@types/node": "24.3.1",
+    "@vitest/coverage-v8": "4.1.1",
+    "chrome-launcher": "1.2.1",
+    "lighthouse": "13.0.3",
+    "prettier": "3.8.1",
+    "tailwindcss": "4.2.2",
+    "typescript": "6.0.2",
+    "vitest": "4.1.1",
+    "wrangler": "4.77.0"
+  }
+}
