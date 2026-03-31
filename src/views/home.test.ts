@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderHomePage } from "./home";
 
 describe("renderHomePage", () => {
-  it("renders the scheduler workspace without bootstrap copy", () => {
+  it("renders a simple queued-posts mockup", () => {
     const html = renderHomePage({
       backupConfigured: true,
       user: {
@@ -12,10 +12,10 @@ describe("renderHomePage", () => {
     });
 
     expect(html).toContain("Social Media Scheduler");
-    expect(html).toContain("Workspace");
+    expect(html).toContain("Compose post");
+    expect(html).toContain("Queued posts");
+    expect(html).toContain("Add to queue");
     expect(html).toContain("Scheduler Admin");
-    expect(html).not.toContain("Available routes");
-    expect(html).not.toContain("Application Foundation");
     expect(html).toContain('rel="stylesheet" href="/styles.css"');
   });
 });

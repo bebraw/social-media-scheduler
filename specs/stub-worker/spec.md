@@ -33,7 +33,7 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 
 - [ ] Anonymous requests to `/` redirect to `/login`.
 - [ ] `POST /login` authenticates a D1-backed account and sets a signed session cookie.
-- [ ] Authenticated requests to `/` return a visible foundation page for the scheduler.
+- [ ] Authenticated requests to `/` return a visible queue-planning page for the scheduler.
 - [ ] The health route returns stable JSON for smoke tests and tooling.
 - [ ] The scheduled handler writes backup artifacts to R2 when configured and skips when the export content is unchanged.
 - [ ] The spec is updated in the same change set.
@@ -66,7 +66,13 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 
 - Given: the local D1 database contains at least one auth user
 - When: the operator submits valid credentials to `/login`
-- Then: the Worker sets a signed session cookie and returns the scheduler foundation page
+- Then: the Worker sets a signed session cookie and returns the scheduler queue page
+
+**Scenario: Operator reviews the queue**
+
+- Given: the operator is already authenticated
+- When: they open `/`
+- Then: they see a composer area plus a queued-post list that sketches the future scheduling workflow
 
 **Scenario: Tooling checks app health**
 
