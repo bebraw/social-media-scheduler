@@ -1,55 +1,72 @@
-# Feature: Stub Worker
+# Feature: Scheduler Foundation
 
 ## Blueprint
 
 ### Context
 
-This template needs a concrete runnable starting point so developers can clone it, start a local app immediately, and exercise the existing quality-gate tools against a real surface instead of empty scaffolding.
+This project is evolving from a generic Worker starter into a private social media scheduler for personal projects.
+
+Before planning richer scheduling UI, the repo needs an operational foundation that is small, testable, and reusable:
+
+- local auth so the app is private by default
+- explicit Cloudflare persistence bindings instead of ad hoc storage
+- scheduled backups that preserve recoverable state as the real scheduler model grows
 
 ### Architecture
 
-- **Entry points:** `wrangler dev` via `src/worker.ts`
-- **Source layout:** `src/worker.ts` routes requests, `src/api/` holds API handlers, and `src/views/` holds HTML rendering modules.
+- **Entry points:** `wrangler dev` via `src/worker.ts`, `npm run account:create` for auth user management, and the Worker scheduled handler for automated backups
+- **Source layout:** `src/worker.ts` routes requests, `src/auth/` holds auth primitives and D1-backed auth state helpers, `src/backup/` holds the backup export flow, `src/api/` holds API handlers, and `src/views/` holds HTML rendering modules.
 - **Styling pipeline:** `src/tailwind-input.css` compiles to `.generated/styles.css`, which the Worker serves at `/styles.css`.
-- **Data models:** None yet. The stub is stateless.
-- **Dependencies:** Wrangler provides the Worker runtime; Playwright and Vitest verify the behavior.
+- **Data models:** D1 stores `app_users`, `login_attempts`, generic `app_state`, and reserved `app_secrets`. R2 stores backup exports, summaries, and manifests when configured.
+- **Dependencies:** Wrangler provides the Worker runtime, D1, R2, and scheduled triggers; Playwright and Vitest verify the behavior.
 
 ### Anti-Patterns
 
-- Do not let the template drift back into an untestable empty shell with no runnable app surface.
-- Do not add feature-specific persistence or auth behavior to the stub without updating this spec and the relevant ADRs.
-- Do not collapse API handling and rendered views back into one file as the starter evolves.
-- Do not move starter styles back into large inline `<style>` blocks.
+- Do not add unauthenticated product routes without an explicit decision that documents why privacy is being relaxed.
+- Do not store session signing secrets inside D1 or inside R2 backups.
+- Do not grow the scheduler data model speculatively before a real adapter or workflow needs it.
+- Do not remove the scheduled backup content hash check and replace it with unconditional writes.
 
 ## Contract
 
 ### Definition of Done
 
-- [ ] The template starts locally through Wrangler without extra scaffolding.
-- [ ] The root route returns a visible HTML starter page for developers.
+- [ ] Anonymous requests to `/` redirect to `/login`.
+- [ ] `POST /login` authenticates a D1-backed account and sets a signed session cookie.
+- [ ] Authenticated requests to `/` return a visible foundation page for the scheduler.
 - [ ] The health route returns stable JSON for smoke tests and tooling.
+- [ ] The scheduled handler writes backup artifacts to R2 when configured and skips when the export content is unchanged.
 - [ ] The spec is updated in the same change set.
 - [ ] Automated tests cover the critical behavior.
 
 ### Regression Guardrails
 
-- `GET /` must keep returning HTML with a recognizable starter heading.
+- `GET /` must not expose the scheduler page to anonymous users.
+- `GET /login` must remain usable as the local sign-in entry point.
 - `GET /styles.css` must keep returning the generated stylesheet.
 - `GET /api/health` must keep returning HTTP 200 JSON with `ok: true`.
+- Session cookies must stay signed with `SESSION_SECRET` and marked `HttpOnly`.
+- Scheduled backups must remain deterministic enough to skip unchanged exports.
 - Unknown routes must return HTTP 404.
 
 ### Verification
 
 - **Automated tests:** colocated Vitest files under `src/**/*.test.ts` for module behavior and colocated Playwright files under `src/**/*.e2e.ts` for the browser-visible flow.
-- **Coverage target:** Keep the `src/worker.ts`, `src/api/**`, and `src/views/**` branches, lines, functions, and statements above the repo coverage thresholds.
+- **Coverage target:** Keep the `src/worker.ts`, `src/auth/**`, `src/backup/**`, `src/api/**`, and `src/views/**` branches, lines, functions, and statements above the repo coverage thresholds.
 
 ### Scenarios
 
-**Scenario: Developer opens the starter app**
+**Scenario: Anonymous visitor opens the app**
 
 - Given: the Worker is running locally
 - When: the developer visits `/`
-- Then: they see a starter page that explains what the template provides
+- Then: they are redirected to `/login`
+
+**Scenario: Operator signs in**
+
+- Given: the local D1 database contains at least one auth user
+- When: the operator submits valid credentials to `/login`
+- Then: the Worker sets a signed session cookie and returns the scheduler foundation page
 
 **Scenario: Tooling checks app health**
 
@@ -63,8 +80,14 @@ This template needs a concrete runnable starting point so developers can clone i
 - When: the browser requests `/styles.css`
 - Then: it receives the generated Tailwind stylesheet through the same local runtime path used by the browser tests
 
+**Scenario: Scheduled backup runs after state changes**
+
+- Given: the Worker has D1 data and an R2 backup binding
+- When: the scheduled handler runs after the exported auth or app state data changes
+- Then: it writes a JSON export, summary report, and manifest under the configured backup prefix
+
 **Scenario: Unknown route**
 
-- Given: the Worker is running locally
+- Given: the operator is already authenticated
 - When: a request hits an undefined route
 - Then: the Worker returns HTTP 404

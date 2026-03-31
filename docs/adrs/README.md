@@ -29,6 +29,7 @@ Skip an ADR for small, reversible, or purely tactical choices.
 | [ADR-011](./ADR-011-upgrade-runtime-baseline-to-node-24.md)             | Accepted   | Move the template runtime baseline from Node 22 to Node 24 LTS.                              |
 | [ADR-012](./ADR-012-constrain-local-tooling-to-macos.md)                | Accepted   | Treat macOS as the local tooling baseline and use direct pinned Agent CI scripts.            |
 | [ADR-013](./ADR-013-return-to-npm-for-agent-ci-compatibility.md)        | Accepted   | Return to npm because local Agent CI remains unreliable with pnpm warmed dependency mounts.  |
+| [ADR-014](./ADR-014-adopt-d1-auth-and-r2-backup-foundations.md)         | Accepted   | Adopt D1-backed auth and scheduled R2 backups as the scheduler's initial operational base.   |
 
 ## Creating A New ADR
 

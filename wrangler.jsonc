@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "social-media-scheduler-worker",
   "main": "src/worker.ts",
-  "compatibility_date": "2026-03-28",
+  "compatibility_date": "2026-03-31",
   "build": {
     "command": "npm run build:css",
     "watch_dir": "src",
@@ -14,4 +14,24 @@
       "fallthrough": true,
     },
   ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "social_media_scheduler_db",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "triggers": {
+    "crons": ["30 1 * * *"],
+  },
+  "r2_buckets": [
+    {
+      "binding": "BACKUP_BUCKET",
+      "bucket_name": "social-media-scheduler-backups",
+    },
+  ],
+  "vars": {
+    "BACKUP_PREFIX": "automated-backups",
+  },
 }

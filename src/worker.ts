@@ -1,28 +1,140 @@
 import { createHealthResponse } from "./api/health";
-import { exampleRoutes } from "./app-routes";
+import {
+  buildSessionCookie,
+  clearSessionCookie,
+  createSessionToken,
+  getSessionUser,
+  resolveAuthState,
+  SESSION_COOKIE,
+  SESSION_TTL_SECONDS,
+  verifyLoginCredentials,
+} from "./auth";
+import type { Env, ScheduledControllerLike } from "./app-env";
+import { appRoutes } from "./app-routes";
+import { runAutomatedBackup } from "./backup";
 import { renderHomePage } from "./views/home";
+import { renderLoginPage } from "./views/login";
 import { renderNotFoundPage } from "./views/not-found";
-import { cssResponse, htmlResponse } from "./views/shared";
+import { cssResponse, htmlResponse, redirectResponse } from "./views/shared";
 
 export default {
-  async fetch(request: Request): Promise<Response> {
-    return await handleRequest(request);
+  async fetch(request: Request, env: Env): Promise<Response> {
+    return await handleRequest(request, env);
+  },
+  async scheduled(controller: ScheduledControllerLike, env: Env): Promise<void> {
+    try {
+      await handleScheduledBackup(controller, env);
+    } catch (error) {
+      console.error("Scheduled backup failed", error);
+      throw error;
+    }
   },
 };
 
-export async function handleRequest(request: Request): Promise<Response> {
+export async function handleRequest(request: Request, env: Env = {}): Promise<Response> {
   const url = new URL(request.url);
 
   if (url.pathname === "/styles.css") {
     return cssResponse(await loadStylesheet());
   }
 
-  if (url.pathname === "/") {
-    return htmlResponse(renderHomePage(exampleRoutes));
+  if (url.pathname === "/api/health") {
+    return createHealthResponse(appRoutes.map((route) => route.path));
   }
 
-  if (url.pathname === "/api/health") {
-    return createHealthResponse(exampleRoutes.map((route) => route.path));
+  const authState = await resolveAuthState(env);
+  if (!env.SESSION_SECRET) {
+    return new Response("SESSION_SECRET must be configured.", { status: 500 });
+  }
+
+  const sessionUser = await getSessionUser(request, env.SESSION_SECRET, SESSION_COOKIE);
+
+  if (url.pathname === "/login" && request.method === "GET") {
+    if (sessionUser) {
+      return redirectResponse("/");
+    }
+
+    return htmlResponse(
+      renderLoginPage({
+        error: authState.error,
+        userCount: authState.users.length,
+      }),
+      authState.error ? 500 : 200,
+    );
+  }
+
+  if (url.pathname === "/login" && request.method === "POST") {
+    if (authState.error) {
+      return htmlResponse(
+        renderLoginPage({
+          error: authState.error,
+          userCount: authState.users.length,
+        }),
+        500,
+      );
+    }
+
+    const formData = await request.formData();
+    const enteredName = String(formData.get("name") || "").trim();
+    const password = String(formData.get("password") || "");
+    const result = await verifyLoginCredentials(env, request, authState, enteredName, password);
+
+    if (result.status === "authenticated") {
+      const token = await createSessionToken(env.SESSION_SECRET, SESSION_TTL_SECONDS, result.user);
+      const headers = new Headers();
+      headers.append(
+        "set-cookie",
+        buildSessionCookie(token, request.url, {
+          cookieName: SESSION_COOKIE,
+          ttlSeconds: SESSION_TTL_SECONDS,
+        }),
+      );
+      return redirectResponse("/", {
+        headers,
+      });
+    }
+
+    const errorByStatus: Record<typeof result.status, string> = {
+      invalid: "Invalid credentials.",
+      password_reset: "This account password hash must be rewritten with the latest account:create script.",
+      rate_limited: "Too many failed login attempts. Try again later.",
+    };
+
+    return htmlResponse(
+      renderLoginPage({
+        error: errorByStatus[result.status],
+        userCount: authState.users.length,
+      }),
+      result.status === "rate_limited" ? 429 : 401,
+    );
+  }
+
+  if (url.pathname === "/logout" && request.method === "POST") {
+    const headers = new Headers();
+    headers.append(
+      "set-cookie",
+      clearSessionCookie(request.url, {
+        cookieName: SESSION_COOKIE,
+        ttlSeconds: SESSION_TTL_SECONDS,
+      }),
+    );
+    return redirectResponse("/login", {
+      headers,
+    });
+  }
+
+  if (!sessionUser) {
+    return redirectResponse("/login");
+  }
+
+  if (url.pathname === "/") {
+    return htmlResponse(
+      renderHomePage({
+        backupConfigured: Boolean(env.BACKUP_BUCKET),
+        routes: appRoutes,
+        user: sessionUser,
+      }),
+    );
   }
 
   return htmlResponse(renderNotFoundPage(url.pathname), 404);
@@ -36,4 +148,29 @@ async function loadStylesheet(): Promise<string> {
 
   const styles = await import("../.generated/styles.css");
   return styles.default;
+}
+
+async function handleScheduledBackup(controller: ScheduledControllerLike, env: Env): Promise<void> {
+  if (!env.DB) {
+    console.warn("Skipping automated backup because the D1 binding is missing.");
+    return;
+  }
+
+  if (!env.BACKUP_BUCKET) {
+    console.warn("Skipping automated backup because the R2 BACKUP_BUCKET binding is missing.");
+    return;
+  }
+
+  const result = await runAutomatedBackup(env.DB, env.BACKUP_BUCKET, {
+    backupPrefix: env.BACKUP_PREFIX,
+    cron: controller.cron,
+  });
+
+  if (result.skipped) {
+    const matchedManifestMessage = result.matchedManifestKey ? `: ${result.matchedManifestKey}` : "";
+    console.log(`Automated backup skipped because exported data is unchanged${matchedManifestMessage}`);
+    return;
+  }
+
+  console.log(`Automated backup completed: ${result.manifestKey}`);
 }

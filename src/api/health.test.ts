@@ -3,13 +3,13 @@ import { createHealthResponse } from "./health";
 
 describe("createHealthResponse", () => {
   it("returns the stable JSON payload for health checks", async () => {
-    const response = createHealthResponse(["/", "/api/health"]);
+    const response = createHealthResponse(["/", "/login", "/api/health"]);
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       ok: true,
-      name: "vibe-template-worker",
-      routes: ["/", "/api/health"],
+      name: "social-media-scheduler",
+      routes: ["/", "/login", "/api/health"],
     });
   });
 });

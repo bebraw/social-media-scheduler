@@ -37,10 +37,14 @@ If local CI warns with `No such remote 'origin'`, add `GITHUB_REPO=owner/repo` t
 - Run the quiet local workflow with `npm run ci:local:quiet`.
 - Run all relevant workflows with `npm run ci:local:all`.
 - Rebuild the generated stylesheet manually with `npm run build:css`.
+- Apply local D1 migrations with `npm run db:migrate`.
+- Apply remote D1 migrations with `npm run db:migrate:remote`.
+- Create or update a local auth user with `npm run account:create -- --name "Scheduler Admin" --password "change-me" --role editor`.
 - Run the fast local gate with `npm run quality:gate:fast`.
 - Run the baseline quality gate with `npm run quality:gate`.
 - Run the shipped runtime dependency audit with `npm run security:audit`.
 - Start the local Worker with `npm run dev`.
+- Prepare the e2e D1 state with `npm run e2e:prepare`.
 - Install the Playwright browser with `npm run playwright:install`.
 - Run end-to-end tests with `npm run e2e`.
 - Run unit and integration tests with `npm test`.
@@ -51,11 +55,15 @@ If local CI warns with `No such remote 'origin'`, add `GITHUB_REPO=owner/repo` t
 - Check formatting with `npm run format:check`.
 - If a run pauses on failure, fix the issue and resume with `npm run ci:local:retry -- --name <runner-name>`.
 
-The template now ships with a minimal Worker stub in `src/worker.ts`. `npm run dev` starts it on `http://127.0.0.1:8787`, and Playwright uses `npm run e2e:server` on `http://127.0.0.1:8788` so browser tests can run without extra setup. The e2e server forces Chokidar polling mode to avoid file-watcher exhaustion in macOS-hosted local runs while preserving the normal `npm run dev` developer loop. API modules live under `src/api/`, view modules live under `src/views/`, and tests are colocated under `src/`.
+The template now ships with a private scheduler foundation in `src/worker.ts`. `npm run dev` starts it on `http://127.0.0.1:8787`, and Playwright uses `npm run e2e:server` on `http://127.0.0.1:8788` after first applying local D1 migrations and creating the default e2e account. The e2e server forces Chokidar polling mode to avoid file-watcher exhaustion in macOS-hosted local runs while preserving the normal `npm run dev` developer loop. Auth helpers live under `src/auth/`, backup helpers live under `src/backup/`, API modules live under `src/api/`, view modules live under `src/views/`, and tests are colocated under `src/`.
 
 The GitHub Actions CI workflow splits fast checks from browser checks into separate jobs, reads the pinned Node version from `package.json`, runs repository-shape validation as part of the fast job, runs the browser job in the version-pinned Playwright container image `mcr.microsoft.com/playwright:v1.58.2-noble`, and cancels superseded runs on the same ref. That keeps the browser job from reinstalling Chromium on every run while still matching the repo's pinned Playwright version.
 
 The starter UI now follows the same Tailwind v4 baseline shape as `thesis-journey-tracker`: Tailwind input lives in `src/tailwind-input.css`, generated CSS is written to `.generated/styles.css`, and Wrangler runs `npm run build:css` automatically before local development.
+
+Auth now mirrors the lightweight setup used in `thesis-journey-tracker`: accounts live in D1, passwords are stored as PBKDF2-SHA256 hashes, session cookies are HMAC-signed with `SESSION_SECRET`, and failed logins are rate-limited per client IP and login name. The checked-in migration also reserves `app_state` and `app_secrets` tables for future scheduler state and encrypted adapter credentials.
+
+Automated backups also follow the `thesis-journey-tracker` shape: a scheduled handler writes a JSON export, a small Markdown summary, and a manifest into R2, then skips creating new artifacts when the export content hash has not changed.
 
 The Lighthouse setup is also generic, but the Worker stub gives it a concrete local target. Use `LIGHTHOUSE_URL=http://127.0.0.1:8787 LIGHTHOUSE_SERVER_COMMAND="npm run dev" npm run lighthouse`. Reports are written to `reports/lighthouse/`.
 
@@ -73,6 +81,7 @@ The template keeps secret handling lightweight and explicit:
 
 - Keep local secrets in untracked files such as `.dev.vars`.
 - Commit example files such as `.dev.vars.example` with placeholder values only.
+- Treat R2 backups as sensitive because they include password hashes from `app_users`.
 - Treat `npm run security:audit` as part of the baseline gate for shipped runtime dependencies.
 
 ## Quality Gate

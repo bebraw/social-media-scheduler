@@ -1,11 +1,16 @@
 # social-media-scheduler
 
-This is a template for my vibecoding projects and it captures what I consider my best practices so I don't have to repeat them for each experiment.
+This repo is the foundation for a private social media scheduler for personal projects. The current slice keeps the product model intentionally abstract while establishing two durable pieces of groundwork:
+
+- D1-backed local auth with signed session cookies
+- Optional scheduled R2 backups for application state snapshots
 
 Local development in this repo targets macOS. Other platforms may need script and tooling adjustments before the baseline workflow works as documented.
 
 ## Documentation
 
+- Setup and first run: `docs/setup.md`
+- Backup configuration and restore notes: `docs/backups.md`
 - Development setup and local CI: `docs/development.md`
 - Architecture decisions: `docs/adrs/README.md`
 - Feature and architecture specs: `specs/README.md`
@@ -17,8 +22,11 @@ Local development in this repo targets macOS. Other platforms may need script an
 - The exact project Node.js version is pinned in `package.json`, and CI reads that value directly.
 - npm now comes from that pinned Node release instead of a separate repo version file.
 - Copy `.dev.vars.example` to `.dev.vars` before running projects that need local secrets.
+- Create the D1 database binding and replace the placeholder `database_id` in `wrangler.jsonc` before running auth flows.
+- Run `npm run db:migrate` before the first authenticated start.
+- Create at least one local account with `npm run account:create -- --name "Scheduler Admin" --password "change-me" --role editor`.
 - Use repo-pinned CLI tools through `npx`, including `npx wrangler` for Cloudflare-based experiments.
-- Start the stub Worker with `npm run dev`, then open `http://127.0.0.1:8787`.
+- Start the Worker with `npm run dev`, then open `http://127.0.0.1:8787`.
 - Rebuild the generated Tailwind stylesheet manually with `npm run build:css` when needed.
 
 ## Verification
@@ -34,17 +42,17 @@ Local development in this repo targets macOS. Other platforms may need script an
 
 ## Starter App
 
-- `GET /` serves a minimal HTML Worker stub.
+- `GET /login` serves the local sign-in page.
+- `GET /` redirects anonymous users to login and serves the authenticated scheduler foundation page for signed-in users.
 - `GET /styles.css` serves the generated Tailwind stylesheet.
 - `GET /api/health` serves a JSON health response for smoke tests and tooling.
+- The scheduled Worker entrypoint can write JSON exports, summary reports, and manifests to R2 when `BACKUP_BUCKET` is configured.
 
 ## Source Layout
 
 - `src/worker.ts` is the Worker entry point and top-level router.
+- `src/auth/` holds password hashing, session, and D1-backed auth state helpers.
+- `src/backup/` holds the scheduled backup export and R2 storage helpers.
 - `src/api/` holds API response modules such as the health endpoint.
 - `src/views/` holds HTML rendering modules for the starter UI.
 - Tests live next to the code they exercise under `src/`.
-
-## Application Screenshot
-
-![Starter app screenshot](docs/screenshots/home.png)
