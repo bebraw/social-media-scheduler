@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "vibe-template-worker",
+  "name": "social-media-scheduler-worker",
   "main": "src/worker.ts",
   "compatibility_date": "2026-03-28",
   "build": {
