@@ -131,7 +131,6 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
     return htmlResponse(
       renderHomePage({
         backupConfigured: Boolean(env.BACKUP_BUCKET),
-        routes: appRoutes,
         user: sessionUser,
       }),
     );

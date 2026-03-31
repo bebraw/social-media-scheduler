@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-app-canvas: #f5efe6;
-  --color-app-surface: rgb(255 251 245 / 0.92);
-  --color-app-text: #1e1a16;
-  --color-app-text-soft: #5f554b;
-  --color-app-accent: #0b6e4f;
-  --color-app-accent-strong: #084c39;
-  --color-app-line: rgb(30 26 22 / 0.12);
+  --color-app-canvas: #f6f7f8;
+  --color-app-surface: rgb(255 255 255 / 0.96);
+  --color-app-text: #16202a;
+  --color-app-text-soft: #5a6773;
+  --color-app-accent: #2563eb;
+  --color-app-accent-strong: #1d4ed8;
+  --color-app-line: rgb(22 32 42 / 0.1);
 
-  --shadow-panel: 0 24px 64px -42px rgb(30 26 22 / 0.34);
+  --shadow-panel: 0 18px 40px -32px rgb(22 32 42 / 0.18);
 }
 
 /*
@@ -23,15 +23,15 @@
   }
 
   body {
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
     text-rendering: optimizeLegibility;
     background:
-      radial-gradient(circle at top left, rgb(11 110 79 / 0.18), transparent 35%),
-      linear-gradient(180deg, #f7f0e8 0%, var(--color-app-canvas) 100%);
+      linear-gradient(180deg, rgb(255 255 255 / 0.75), rgb(255 255 255 / 0)) 0 0 / 100% 18rem no-repeat,
+      var(--color-app-canvas);
   }
 
   ::selection {
-    background: rgb(11 110 79 / 0.18);
+    background: rgb(37 99 235 / 0.16);
   }
 
   *,

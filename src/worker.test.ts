@@ -136,7 +136,8 @@ describe("worker", () => {
     expect(response.status).toBe(200);
     const body = await response.text();
     expect(body).toContain("Social Media Scheduler");
-    expect(body).toContain("Signed in as Scheduler Admin");
+    expect(body).toContain("Session");
+    expect(body).toContain("Scheduler Admin");
   });
 
   it("returns a JSON health response", async () => {
