@@ -43,14 +43,39 @@ export function renderHomePage({ backupConfigured, user }: HomePageOptions): str
       slot: "Thu, 11:15",
     },
   ];
-  const channelDraftsMarkup = channelDrafts
-    .map((draft) => {
-      const constraint = CHANNEL_CONSTRAINTS.find((item) => item.id === draft.id);
-      if (!constraint) {
-        return "";
-      }
+  const channelDraftEntries = channelDrafts.flatMap((draft) => {
+    const constraint = CHANNEL_CONSTRAINTS.find((item) => item.id === draft.id);
+    if (!constraint) {
+      return [];
+    }
 
-      const usage = describeUsage(draft.id, draft.content);
+    return [
+      {
+        draft,
+        constraint,
+        usage: describeUsage(draft.id, draft.content),
+      },
+    ];
+  });
+  const channelTabsMarkup = channelDraftEntries
+    .map(({ draft, constraint }, index) => {
+      const isSelected = index === 0;
+
+      return `<button class="${isSelected ? "bg-app-accent text-white shadow-sm" : "bg-white text-app-text hover:bg-app-canvas"} rounded-xl px-4 py-3 text-left text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/20" type="button" role="tab" id="draft-tab-${escapeHtml(
+        draft.id,
+      )}" aria-selected="${isSelected ? "true" : "false"}" aria-controls="draft-panel-${escapeHtml(
+        draft.id,
+      )}" tabindex="${isSelected ? "0" : "-1"}" data-channel-tab data-channel-id="${escapeHtml(draft.id)}">
+        <span class="block text-xs font-semibold uppercase tracking-[0.12em] ${isSelected ? "text-white/70" : "text-app-text-soft"}">${escapeHtml(
+          draft.accent,
+        )}</span>
+        <span class="mt-2 block text-base tracking-[-0.02em]">${escapeHtml(constraint.name)}</span>
+      </button>`;
+    })
+    .join("");
+  const channelDraftsMarkup = channelDraftEntries
+    .map(({ draft, constraint, usage }, index) => {
+      const isSelected = index === 0;
       const stateClass =
         usage.state === "over"
           ? "bg-amber-50 text-amber-900"
@@ -58,24 +83,30 @@ export function renderHomePage({ backupConfigured, user }: HomePageOptions): str
             ? "bg-app-canvas text-app-text"
             : "bg-app-accent text-white";
 
-      return `<section class="flex flex-col rounded-xl border border-app-line bg-white p-6" data-channel-column data-channel-id="${escapeHtml(draft.id)}" data-channel-limit="${constraint.limit}">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">${escapeHtml(draft.accent)}</p>
-            <h2 class="mt-2 text-lg font-semibold tracking-[-0.02em]">${escapeHtml(constraint.name)}</h2>
-            <p class="mt-1 text-sm leading-6 text-app-text-soft">${escapeHtml(draft.subtitle)}</p>
+      return `<section class="grid gap-5 rounded-xl border border-app-line bg-white p-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.9fr)]" role="tabpanel" id="draft-panel-${escapeHtml(
+        draft.id,
+      )}" aria-labelledby="draft-tab-${escapeHtml(draft.id)}" ${isSelected ? "" : "hidden"} data-channel-column data-channel-id="${escapeHtml(
+        draft.id,
+      )}" data-channel-limit="${constraint.limit}">
+        <div class="min-w-0">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">${escapeHtml(draft.accent)}</p>
+              <h3 class="mt-2 text-xl font-semibold tracking-[-0.03em]">${escapeHtml(constraint.name)}</h3>
+              <p class="mt-1 max-w-2xl text-sm leading-6 text-app-text-soft">${escapeHtml(draft.subtitle)}</p>
+            </div>
+            <span class="rounded-full ${stateClass} px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em]" data-channel-status>${escapeHtml(
+              usage.state === "over" ? "Over limit" : usage.state === "warning" ? "Close to limit" : "Ready",
+            )}</span>
           </div>
-          <span class="rounded-full ${stateClass} px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em]" data-channel-status>${escapeHtml(
-            usage.state === "over" ? "Over limit" : usage.state === "warning" ? "Close to limit" : "Ready",
-          )}</span>
+          <label class="mt-5 grid gap-2 text-sm font-medium">
+            <span>${escapeHtml(constraint.name)} post copy</span>
+            <textarea class="min-h-80 rounded-xl border border-app-line bg-app-canvas/40 px-4 py-4 text-sm leading-6 text-app-text outline-none transition placeholder:text-app-text-soft/70 focus:border-app-accent focus:ring-2 focus:ring-app-accent/10" data-channel-input aria-label="${escapeHtml(
+              constraint.name,
+            )} post copy">${escapeHtml(draft.content)}</textarea>
+          </label>
         </div>
-        <label class="mt-5 grid gap-2 text-sm font-medium">
-          <span>${escapeHtml(constraint.name)} post copy</span>
-          <textarea class="min-h-52 rounded-xl border border-app-line bg-app-canvas/40 px-4 py-3 text-sm leading-6 text-app-text outline-none transition placeholder:text-app-text-soft/70 focus:border-app-accent focus:ring-2 focus:ring-app-accent/10" data-channel-input aria-label="${escapeHtml(constraint.name)} post copy">${escapeHtml(
-            draft.content,
-          )}</textarea>
-        </label>
-        <div class="mt-4 grid gap-3">
+        <div class="grid gap-3 self-start">
           <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
             <div class="flex items-center justify-between gap-3">
               <div>
@@ -97,10 +128,10 @@ export function renderHomePage({ backupConfigured, user }: HomePageOptions): str
               <option>Tomorrow, 13:00</option>
             </select>
           </label>
-        </div>
-        <div class="mt-5 flex flex-wrap gap-3">
-          <button class="rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-app-accent-strong" type="button" data-queue-button>Queue post</button>
-          <button class="rounded-xl border border-app-line bg-white px-4 py-3 text-sm font-semibold text-app-text transition hover:bg-app-canvas" type="button">Save draft</button>
+          <div class="flex flex-wrap gap-3 pt-2">
+            <button class="rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-app-accent-strong" type="button" data-queue-button>Queue post</button>
+            <button class="rounded-xl border border-app-line bg-white px-4 py-3 text-sm font-semibold text-app-text transition hover:bg-app-canvas" type="button">Save draft</button>
+          </div>
         </div>
       </section>`;
     })
@@ -188,11 +219,16 @@ export function renderHomePage({ backupConfigured, user }: HomePageOptions): str
             <div class="flex items-center justify-between gap-3">
               <div>
                 <h2 class="text-lg font-semibold tracking-[-0.02em]">Channel drafts</h2>
-                <p class="mt-1 text-sm leading-6 text-app-text-soft">Separate columns for LinkedIn, X, and Bluesky with lightweight queue behavior and channel-specific limits.</p>
+                <p class="mt-1 text-sm leading-6 text-app-text-soft">Switch between LinkedIn, X, and Bluesky drafts so one channel stays in focus while the editor gets more room for real writing.</p>
               </div>
               <span class="rounded-full bg-app-canvas px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Mockup + interaction</span>
             </div>
-            <div class="mt-5 grid gap-4 xl:grid-cols-3">${channelDraftsMarkup}</div>
+            <div class="mt-5 grid gap-4">
+              <div class="grid gap-2 sm:grid-cols-3" role="tablist" aria-label="Draft channels">
+                ${channelTabsMarkup}
+              </div>
+              ${channelDraftsMarkup}
+            </div>
           </section>
           <section class="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
             <section class="grid gap-4">

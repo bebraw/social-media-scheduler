@@ -10,15 +10,25 @@ test("requires login before showing the application home", async ({ page }) => {
 
   await expect(page.getByRole("heading", { level: 1, name: "Social Media Scheduler" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Channel drafts" })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "LinkedIn" })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "X" })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "Bluesky" })).toBeVisible();
+  const linkedInTab = page.getByRole("tab", { name: /LinkedIn/ });
+  const xTab = page.getByRole("tab", { name: /X/ });
+  const blueskyTab = page.getByRole("tab", { name: /Bluesky/ });
+  await expect(linkedInTab).toHaveAttribute("aria-selected", "true");
+  await expect(xTab).toHaveAttribute("aria-selected", "false");
+  await expect(blueskyTab).toHaveAttribute("aria-selected", "false");
+  await expect(page.getByLabel("LinkedIn post copy")).toBeVisible();
+  await expect(page.getByLabel("X post copy")).not.toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Queued posts" })).toBeVisible();
   await expect(page.getByRole("link", { name: "/api/health" })).toBeVisible();
 
+  await xTab.click();
+  await expect(xTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByLabel("X post copy")).toBeVisible();
+  await expect(page.getByLabel("LinkedIn post copy")).not.toBeVisible();
+
   await page.getByLabel("X post copy").fill("Queue this X draft for the afternoon slot.");
   await page.getByLabel("X queue slot").selectOption("Today, 16:30");
-  await page.getByRole("button", { name: "Queue post" }).nth(1).click();
+  await page.getByRole("button", { name: "Queue post" }).click();
 
   await expect(page.locator("[data-metric-queued]")).toHaveText("5");
   await expect(page.locator("[data-queued-posts] article").first()).toContainText("Queue this X draft for the afternoon slot.");

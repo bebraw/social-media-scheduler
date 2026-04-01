@@ -33,7 +33,7 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 
 - [ ] Anonymous requests to `/` redirect to `/login`.
 - [ ] `POST /login` authenticates a D1-backed account and sets a signed session cookie.
-- [ ] Authenticated requests to `/` return a visible queue-planning page with separate LinkedIn, X, and Bluesky columns.
+- [ ] Authenticated requests to `/` return a visible queue-planning page with separate LinkedIn, X, and Bluesky drafts exposed through a tabbed editor.
 - [ ] The queue UI applies channel-specific copy budgets and lightweight client-side queue interactions.
 - [ ] The health route returns stable JSON for smoke tests and tooling.
 - [ ] The scheduled handler writes backup artifacts to R2 when configured and skips when the export content is unchanged.
@@ -47,6 +47,7 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 - `GET /home.js` must keep returning the lightweight client-side queue behavior script.
 - `GET /styles.css` must keep returning the generated stylesheet.
 - `GET /api/health` must keep returning HTTP 200 JSON with `ok: true`.
+- The draft workspace must keep exactly one channel panel visible at a time while preserving channel-specific limits and queue controls.
 - Session cookies must stay signed with `SESSION_SECRET` and marked `HttpOnly`.
 - Scheduled backups must remain deterministic enough to skip unchanged exports.
 - Unknown routes must return HTTP 404.
@@ -74,7 +75,13 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 
 - Given: the operator is already authenticated
 - When: they open `/`
-- Then: they see separate LinkedIn, X, and Bluesky draft columns plus a queued-post list that sketches the future scheduling workflow
+- Then: they see LinkedIn, X, and Bluesky draft tabs, one visible authoring panel, and a queued-post list that sketches the future scheduling workflow
+
+**Scenario: Operator switches draft channels**
+
+- Given: the operator is already authenticated
+- When: they select a different draft tab
+- Then: the chosen channel panel becomes visible, the previously active panel is hidden, and the draft controls remain scoped to the active channel
 
 **Scenario: Operator queues a draft from a channel column**
 

@@ -3,7 +3,7 @@ import { CHANNEL_CONSTRAINTS } from "../queue/constraints";
 import { renderHomePage } from "./home";
 
 describe("renderHomePage", () => {
-  it("renders per-channel columns with interaction hooks", () => {
+  it("renders tabbed channel drafts with interaction hooks", () => {
     const html = renderHomePage({
       backupConfigured: true,
       user: {
@@ -20,7 +20,11 @@ describe("renderHomePage", () => {
     expect(html).toContain("3000 characters");
     expect(html).toContain("280 weighted characters");
     expect(html).toContain("300 grapheme clusters");
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain("data-channel-tab");
     expect(html).toContain("data-channel-column");
+    expect(html).toContain('aria-selected="true"');
+    expect(html).toContain("hidden");
     expect(html).toContain("data-queue-button");
     expect(html).toContain('src="/home.js"');
     expect(html).toContain("Queued posts");

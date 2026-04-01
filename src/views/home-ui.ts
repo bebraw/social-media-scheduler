@@ -1,7 +1,91 @@
-export const HOME_PAGE_SCRIPT = `const channelColumns = Array.from(document.querySelectorAll("[data-channel-column]"));
+export const HOME_PAGE_SCRIPT = `const channelTabs = Array.from(document.querySelectorAll("[data-channel-tab]"));
+const channelColumns = Array.from(document.querySelectorAll("[data-channel-column]"));
 const queueList = document.querySelector("[data-queued-posts]");
 const queuedCount = document.querySelector("[data-metric-queued]");
 const todayCount = document.querySelector("[data-metric-today]");
+
+if (channelTabs.length > 0 && channelColumns.length > 0) {
+  const activateChannel = (channelId, options = {}) => {
+    const shouldFocus = options.focus === true;
+
+    for (const tab of channelTabs) {
+      if (!(tab instanceof HTMLButtonElement)) {
+        continue;
+      }
+
+      const isActive = tab.getAttribute("data-channel-id") === channelId;
+      tab.setAttribute("aria-selected", isActive ? "true" : "false");
+      tab.tabIndex = isActive ? 0 : -1;
+      tab.className = buildTabClass(isActive);
+
+      const accent = tab.querySelector("span");
+      if (accent instanceof HTMLElement) {
+        accent.className = buildTabAccentClass(isActive);
+      }
+
+      if (isActive && shouldFocus) {
+        tab.focus();
+      }
+    }
+
+    for (const column of channelColumns) {
+      if (!(column instanceof HTMLElement)) {
+        continue;
+      }
+
+      column.hidden = column.getAttribute("data-channel-id") !== channelId;
+    }
+  };
+
+  for (const [index, tab] of channelTabs.entries()) {
+    if (!(tab instanceof HTMLButtonElement)) {
+      continue;
+    }
+
+    tab.addEventListener("click", () => {
+      const channelId = tab.getAttribute("data-channel-id");
+      if (channelId) {
+        activateChannel(channelId);
+      }
+    });
+
+    tab.addEventListener("keydown", (event) => {
+      const lastIndex = channelTabs.length - 1;
+      let nextIndex = index;
+
+      if (event.key === "ArrowRight") {
+        nextIndex = index === lastIndex ? 0 : index + 1;
+      } else if (event.key === "ArrowLeft") {
+        nextIndex = index === 0 ? lastIndex : index - 1;
+      } else if (event.key === "Home") {
+        nextIndex = 0;
+      } else if (event.key === "End") {
+        nextIndex = lastIndex;
+      } else {
+        return;
+      }
+
+      event.preventDefault();
+      const nextTab = channelTabs[nextIndex];
+      if (!(nextTab instanceof HTMLButtonElement)) {
+        return;
+      }
+
+      const channelId = nextTab.getAttribute("data-channel-id");
+      if (channelId) {
+        activateChannel(channelId, { focus: true });
+      }
+    });
+  }
+
+  const selectedTab = channelTabs.find(
+    (tab) => tab instanceof HTMLElement && tab.getAttribute("aria-selected") === "true",
+  );
+  const initialChannelId = selectedTab?.getAttribute("data-channel-id") || channelTabs[0]?.getAttribute("data-channel-id");
+  if (initialChannelId) {
+    activateChannel(initialChannelId);
+  }
+}
 
 for (const column of channelColumns) {
   const textarea = column.querySelector("[data-channel-input]");
@@ -158,6 +242,16 @@ function buildStatusClass(state) {
   if (state === "over") return base + " bg-amber-50 text-amber-900";
   if (state === "warning") return base + " bg-app-canvas text-app-text";
   return base + " bg-app-accent text-white";
+}
+
+function buildTabClass(isActive) {
+  const base =
+    "rounded-xl px-4 py-3 text-left text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/20";
+  return isActive ? base + " bg-app-accent text-white shadow-sm" : base + " bg-white text-app-text hover:bg-app-canvas";
+}
+
+function buildTabAccentClass(isActive) {
+  return "block text-xs font-semibold uppercase tracking-[0.12em] " + (isActive ? "text-white/70" : "text-app-text-soft");
 }
 
 function updateMetrics() {
