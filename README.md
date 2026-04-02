@@ -18,8 +18,9 @@ Local development in this repo targets macOS. Other platforms may need script an
 
 ## Runtime
 
+- If you use `nvm`, run `nvm use 24.14.1` before repo commands. The exact Node.js version is pinned in `package.json`.
 - Install dependencies with `npm install`.
-- The exact project Node.js version is pinned in `package.json`, and CI reads that value directly.
+- CI reads the same pinned Node.js version directly from `package.json`.
 - npm now comes from that pinned Node release instead of a separate repo version file.
 - Copy `.dev.vars.example` to `.dev.vars` before running projects that need local secrets.
 - Create the D1 database binding and replace the placeholder `database_id` in `wrangler.jsonc` before running auth flows.
@@ -43,7 +44,7 @@ Local development in this repo targets macOS. Other platforms may need script an
 ## Starter App
 
 - `GET /login` serves the local sign-in page.
-- `GET /` redirects anonymous users to login and serves the authenticated scheduler foundation page for signed-in users.
+- `GET /` redirects anonymous users to login and serves the authenticated scheduler foundation page with channel drafts, queue preview, and per-channel sent-history inspection for signed-in users.
 - `GET /styles.css` serves the generated Tailwind stylesheet.
 - `GET /api/health` serves a JSON health response for smoke tests and tooling.
 - The scheduled Worker entrypoint can write JSON exports, summary reports, and manifests to R2 when `BACKUP_BUCKET` is configured.
@@ -53,6 +54,7 @@ Local development in this repo targets macOS. Other platforms may need script an
 - `src/worker.ts` is the Worker entry point and top-level router.
 - `src/auth/` holds password hashing, session, and D1-backed auth state helpers.
 - `src/backup/` holds the scheduled backup export and R2 storage helpers.
+- `src/history/` holds sent-post history loading and fallback starter data.
 - `src/api/` holds API response modules such as the health endpoint.
 - `src/views/` holds HTML rendering modules for the starter UI.
 - Tests live next to the code they exercise under `src/`.

@@ -1,4 +1,5 @@
 import { CHANNEL_CONSTRAINTS, describeUsage, type QueueChannel } from "../queue/constraints";
+import type { SentPostHistoryEntry } from "../history";
 import { escapeHtml } from "./shared";
 import { HOME_PAGE_SCRIPT } from "./home-ui";
 
@@ -7,13 +8,14 @@ const appDescription = "A private workspace for planning and reviewing social po
 
 interface HomePageOptions {
   backupConfigured: boolean;
+  sentHistory: SentPostHistoryEntry[];
   user: {
     name: string;
     role: string;
   };
 }
 
-export function renderHomePage({ backupConfigured, user }: HomePageOptions): string {
+export function renderHomePage({ backupConfigured, sentHistory, user }: HomePageOptions): string {
   const backupStatus = backupConfigured
     ? "R2 backup binding detected. Scheduled backups can write manifests and exports."
     : "R2 backup binding is not configured yet. Auth works locally without it, but scheduled backups will skip.";
@@ -185,6 +187,47 @@ export function renderHomePage({ backupConfigured, user }: HomePageOptions): str
       </article>`,
     )
     .join("");
+  const historyFilterCounts = [
+    { id: "all", label: "All channels", count: sentHistory.length },
+    ...CHANNEL_CONSTRAINTS.map((constraint) => ({
+      id: constraint.id,
+      label: constraint.name,
+      count: sentHistory.filter((entry) => entry.channel === constraint.id).length,
+    })),
+  ];
+  const historyFiltersMarkup = historyFilterCounts
+    .map(
+      (filter, index) => `<button class="${buildHistoryFilterClass(index === 0)}" type="button" aria-pressed="${
+        index === 0 ? "true" : "false"
+      }" data-history-filter="${escapeHtml(filter.id)}">
+        <span>${escapeHtml(filter.label)}</span>
+        <span class="rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-app-text">${escapeHtml(String(filter.count))}</span>
+      </button>`,
+    )
+    .join("");
+  const sentHistoryMarkup = sentHistory
+    .map(
+      (entry) => `<article class="rounded-xl border border-app-line bg-white p-5" data-history-card data-history-channel="${escapeHtml(
+        entry.channel,
+      )}">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="rounded-full bg-app-canvas px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-app-accent-strong">${escapeHtml(
+                channelLabel(entry.channel),
+              )}</span>
+              <span class="text-xs font-medium uppercase tracking-[0.12em] text-app-text-soft">${escapeHtml(entry.project)}</span>
+            </div>
+            <p class="mt-3 max-w-2xl text-sm leading-6 text-app-text">${escapeHtml(entry.body)}</p>
+          </div>
+          <div class="sm:max-w-56 sm:text-right">
+            <p class="text-sm font-medium text-app-text">${escapeHtml(formatHistoryTimestamp(entry.sentAt))}</p>
+            <p class="mt-1 text-sm text-app-text-soft">${escapeHtml(entry.outcome)}</p>
+          </div>
+        </div>
+      </article>`,
+    )
+    .join("");
 
   return `<!doctype html>
 <html lang="en">
@@ -266,6 +309,20 @@ export function renderHomePage({ backupConfigured, user }: HomePageOptions): str
             </div>
             <div class="mt-5 grid gap-3" data-queued-posts>${queuedPostsMarkup}</div>
           </section>
+          <section class="rounded-xl border border-app-line bg-white p-6">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 class="text-lg font-semibold tracking-[-0.02em]">Sent history</h2>
+                <p class="mt-1 max-w-2xl text-sm leading-6 text-app-text-soft">Inspect previously sent posts by channel so you can review tone, cadence, and recent output without leaving the scheduler workspace.</p>
+              </div>
+              <p class="text-sm font-medium text-app-text-soft"><span data-history-count>${escapeHtml(String(sentHistory.length))}</span> posts shown</p>
+            </div>
+            <div class="mt-5 flex flex-wrap gap-2" aria-label="Sent history filters">
+              ${historyFiltersMarkup}
+            </div>
+            <div class="mt-5 grid gap-3" data-sent-history-list>${sentHistoryMarkup}</div>
+            <p class="mt-4 hidden rounded-xl border border-dashed border-app-line bg-app-canvas/50 px-4 py-3 text-sm text-app-text-soft" data-history-empty>No sent posts match this channel yet.</p>
+          </section>
           </section>
         </div>
       </article>
@@ -275,3 +332,30 @@ export function renderHomePage({ backupConfigured, user }: HomePageOptions): str
 }
 
 export { HOME_PAGE_SCRIPT };
+
+function buildHistoryFilterClass(isActive: boolean): string {
+  const base =
+    "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/20";
+  return isActive
+    ? `${base} border-app-accent bg-app-accent/10 text-app-accent-strong`
+    : `${base} border-app-line bg-app-canvas/50 text-app-text hover:bg-app-canvas`;
+}
+
+function channelLabel(channel: QueueChannel): string {
+  if (channel === "linkedin") return "LinkedIn";
+  if (channel === "x") return "X";
+  return "Bluesky";
+}
+
+function formatHistoryTimestamp(value: string): string {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(new Date(timestamp));
+}

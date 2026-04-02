@@ -10,6 +10,12 @@ This guide covers the local setup flow for running the private scheduler foundat
 
 ## 1. Install Dependencies
 
+If you use `nvm`, switch to the pinned Node release first:
+
+```bash
+nvm use 24.14.1
+```
+
 ```bash
 npm install
 ```

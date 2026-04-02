@@ -15,7 +15,7 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 ### Architecture
 
 - **Entry points:** `wrangler dev` via `src/worker.ts`, `npm run account:create` for auth user management, and the Worker scheduled handler for automated backups
-- **Source layout:** `src/worker.ts` routes requests, `src/auth/` holds auth primitives and D1-backed auth state helpers, `src/backup/` holds the backup export flow, `src/queue/` holds channel constraint logic, `src/api/` holds API handlers, and `src/views/` holds HTML rendering modules plus the home-page interaction script.
+- **Source layout:** `src/worker.ts` routes requests, `src/auth/` holds auth primitives and D1-backed auth state helpers, `src/backup/` holds the backup export flow, `src/history/` holds sent-post history loading, `src/queue/` holds channel constraint logic, `src/api/` holds API handlers, and `src/views/` holds HTML rendering modules plus the home-page interaction script.
 - **Styling pipeline:** `src/tailwind-input.css` compiles to `.generated/styles.css`, which the Worker serves at `/styles.css`.
 - **Data models:** D1 stores `app_users`, `login_attempts`, generic `app_state`, and reserved `app_secrets`. R2 stores backup exports, summaries, and manifests when configured.
 - **Dependencies:** Wrangler provides the Worker runtime, D1, R2, and scheduled triggers; Playwright and Vitest verify the behavior.
@@ -35,6 +35,7 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 - [ ] `POST /login` authenticates a D1-backed account and sets a signed session cookie.
 - [ ] Authenticated requests to `/` return a visible queue-planning page with separate LinkedIn, X, and Bluesky drafts exposed through a tabbed editor.
 - [ ] The queue UI applies channel-specific copy budgets and lightweight client-side queue interactions.
+- [ ] The home page exposes a sent-history inspector that can filter previously sent posts by channel.
 - [ ] The health route returns stable JSON for smoke tests and tooling.
 - [ ] The scheduled handler writes backup artifacts to R2 when configured and skips when the export content is unchanged.
 - [ ] The spec is updated in the same change set.
@@ -48,6 +49,7 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 - `GET /styles.css` must keep returning the generated stylesheet.
 - `GET /api/health` must keep returning HTTP 200 JSON with `ok: true`.
 - The draft workspace must keep exactly one channel panel visible at a time while preserving channel-specific limits and queue controls.
+- The sent-history view must keep filtering cards on the client without a full page reload.
 - Session cookies must stay signed with `SESSION_SECRET` and marked `HttpOnly`.
 - Scheduled backups must remain deterministic enough to skip unchanged exports.
 - Unknown routes must return HTTP 404.
@@ -76,6 +78,12 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 - Given: the operator is already authenticated
 - When: they open `/`
 - Then: they see LinkedIn, X, and Bluesky draft tabs, one visible authoring panel, and a queued-post list that sketches the future scheduling workflow
+
+**Scenario: Operator inspects previously sent posts**
+
+- Given: the operator is already authenticated
+- When: they use the sent-history channel filters on `/`
+- Then: the page narrows the visible sent-post cards to the selected channel without leaving the home page
 
 **Scenario: Operator switches draft channels**
 

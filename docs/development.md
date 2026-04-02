@@ -16,8 +16,9 @@ This template is set up for the local Agent CI runner from `agent-ci.dev`.
 ### Prerequisites
 
 - Local development in this template targets macOS. The documented commands assume a macOS shell environment and are not maintained as a cross-platform baseline.
+- If you use `nvm`, run `nvm use 24.14.1` before repo commands. The exact Node.js version is pinned in `package.json`.
 - Install dependencies with `npm install`.
-- The exact Node.js version is pinned in `package.json`, and CI reads that value directly through `actions/setup-node`.
+- CI reads that same exact Node.js version directly through `actions/setup-node`.
 - npm comes from that pinned Node release rather than a separate repo-level npm pin.
 - Copy `.dev.vars.example` to `.dev.vars` and replace placeholder values when a project needs local secrets.
 - Copy `.env.agent-ci.example` to `.env.agent-ci` when you need machine-local Agent CI overrides. Agent CI loads that file automatically.

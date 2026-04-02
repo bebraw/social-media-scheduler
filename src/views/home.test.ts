@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { loadSentPostHistory } from "../history";
 import { CHANNEL_CONSTRAINTS } from "../queue/constraints";
+import { createTestDatabase } from "../test-support";
 import { renderHomePage } from "./home";
 
 describe("renderHomePage", () => {
-  it("renders tabbed channel drafts with interaction hooks", () => {
+  it("renders tabbed channel drafts with interaction hooks", async () => {
+    const sentHistory = await loadSentPostHistory(createTestDatabase());
     const html = renderHomePage({
       backupConfigured: true,
+      sentHistory,
       user: {
         name: "Scheduler Admin",
         role: "editor",
@@ -28,13 +32,18 @@ describe("renderHomePage", () => {
     expect(html).toContain("data-queue-button");
     expect(html).toContain('src="/home.js"');
     expect(html).toContain("Queued posts");
+    expect(html).toContain("Sent history");
+    expect(html).toContain("data-history-filter");
+    expect(html).toContain("data-history-card");
     expect(html).toContain("Scheduler Admin");
     expect(html).toContain('rel="stylesheet" href="/styles.css"');
   });
 
-  it("renders the backup warning when backups are not configured", () => {
+  it("renders the backup warning when backups are not configured", async () => {
+    const sentHistory = await loadSentPostHistory(createTestDatabase());
     const html = renderHomePage({
       backupConfigured: false,
+      sentHistory,
       user: {
         name: "Scheduler Admin",
         role: "editor",
@@ -44,12 +53,14 @@ describe("renderHomePage", () => {
     expect(html).toContain("R2 backup binding is not configured yet.");
   });
 
-  it("skips a draft column if its constraint metadata is missing", () => {
+  it("skips a draft column if its constraint metadata is missing", async () => {
     const removedConstraint = CHANNEL_CONSTRAINTS.pop();
 
     try {
+      const sentHistory = await loadSentPostHistory(createTestDatabase());
       const html = renderHomePage({
         backupConfigured: true,
+        sentHistory,
         user: {
           name: "Scheduler Admin",
           role: "editor",

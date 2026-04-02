@@ -124,6 +124,17 @@ class TestPreparedStatement implements D1PreparedStatement {
       return { success: true, meta: { changes: 1 } };
     }
 
+    if (this.normalizedQuery.startsWith("insert into app_state")) {
+      const [key, valueJson] = this.bindings as [string, string];
+      const existing = this.state.appState.get(key);
+      this.state.appState.set(key, {
+        key,
+        valueJson,
+        updatedAt: existing?.updatedAt || new Date().toISOString(),
+      });
+      return { success: true, meta: { changes: 1 } };
+    }
+
     throw new Error(`Unsupported run query in test database: ${this.normalizedQuery}`);
   }
 
@@ -186,6 +197,20 @@ class TestPreparedStatement implements D1PreparedStatement {
           value_json: entry.valueJson,
           updated_at: entry.updatedAt,
         }));
+    }
+
+    if (this.normalizedQuery.includes("from app_state where state_key = ?")) {
+      const [stateKey] = this.bindings as [string];
+      const entry = this.state.appState.get(stateKey);
+      return entry
+        ? [
+            {
+              state_key: entry.key,
+              value_json: entry.valueJson,
+              updated_at: entry.updatedAt,
+            },
+          ]
+        : [];
     }
 
     throw new Error(`Unsupported select query in test database: ${this.normalizedQuery}`);

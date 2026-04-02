@@ -3,6 +3,10 @@ const channelColumns = Array.from(document.querySelectorAll("[data-channel-colum
 const queueList = document.querySelector("[data-queued-posts]");
 const queuedCount = document.querySelector("[data-metric-queued]");
 const todayCount = document.querySelector("[data-metric-today]");
+const historyFilters = Array.from(document.querySelectorAll("[data-history-filter]"));
+const historyCards = Array.from(document.querySelectorAll("[data-history-card]"));
+const historyCount = document.querySelector("[data-history-count]");
+const historyEmpty = document.querySelector("[data-history-empty]");
 
 if (channelTabs.length > 0 && channelColumns.length > 0) {
   const activateChannel = (channelId, options = {}) => {
@@ -156,6 +160,7 @@ for (const column of channelColumns) {
 }
 
 updateMetrics();
+setupHistoryFilters();
 
 function describeUsage(channel, value, limit) {
   const count = countChannel(channel, value);
@@ -254,6 +259,14 @@ function buildTabAccentClass(isActive) {
   return "block text-xs font-semibold uppercase tracking-[0.12em] " + (isActive ? "text-white/70" : "text-app-text-soft");
 }
 
+function buildHistoryFilterClass(isActive) {
+  const base =
+    "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/20";
+  return isActive
+    ? base + " border-app-accent bg-app-accent/10 text-app-accent-strong"
+    : base + " border-app-line bg-app-canvas/50 text-app-text hover:bg-app-canvas";
+}
+
 function updateMetrics() {
   if (!(queueList instanceof HTMLElement)) {
     return;
@@ -266,6 +279,61 @@ function updateMetrics() {
   if (todayCount instanceof HTMLElement) {
     todayCount.textContent = String(Math.min(totalCards, 2));
   }
+}
+
+function setupHistoryFilters() {
+  if (historyFilters.length === 0 || historyCards.length === 0) {
+    return;
+  }
+
+  const applyHistoryFilter = (filterValue) => {
+    let visibleCount = 0;
+
+    for (const filter of historyFilters) {
+      if (!(filter instanceof HTMLButtonElement)) {
+        continue;
+      }
+
+      const isActive = filter.getAttribute("data-history-filter") === filterValue;
+      filter.setAttribute("aria-pressed", isActive ? "true" : "false");
+      filter.className = buildHistoryFilterClass(isActive);
+    }
+
+    for (const card of historyCards) {
+      if (!(card instanceof HTMLElement)) {
+        continue;
+      }
+
+      const matches = filterValue === "all" || card.getAttribute("data-history-channel") === filterValue;
+      card.hidden = !matches;
+      if (matches) {
+        visibleCount += 1;
+      }
+    }
+
+    if (historyCount instanceof HTMLElement) {
+      historyCount.textContent = String(visibleCount);
+    }
+    if (historyEmpty instanceof HTMLElement) {
+      historyEmpty.hidden = visibleCount !== 0;
+    }
+  };
+
+  for (const filter of historyFilters) {
+    if (!(filter instanceof HTMLButtonElement)) {
+      continue;
+    }
+
+    filter.addEventListener("click", () => {
+      applyHistoryFilter(filter.getAttribute("data-history-filter") || "all");
+    });
+  }
+
+  const initialFilter =
+    historyFilters.find((filter) => filter instanceof HTMLButtonElement && filter.getAttribute("aria-pressed") === "true")?.getAttribute(
+      "data-history-filter",
+    ) || "all";
+  applyHistoryFilter(initialFilter);
 }
 
 function escapeHtml(value) {

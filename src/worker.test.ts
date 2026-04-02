@@ -138,6 +138,7 @@ describe("worker", () => {
     expect(body).toContain("Social Media Scheduler");
     expect(body).toContain("Session");
     expect(body).toContain("Scheduler Admin");
+    expect(body).toContain("Sent history");
   });
 
   it("returns a JSON health response", async () => {

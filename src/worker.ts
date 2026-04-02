@@ -12,6 +12,7 @@ import {
 import type { Env, ScheduledControllerLike } from "./app-env";
 import { appRoutes } from "./app-routes";
 import { runAutomatedBackup } from "./backup";
+import { loadSentPostHistory } from "./history";
 import { HOME_PAGE_SCRIPT, renderHomePage } from "./views/home";
 import { renderLoginPage } from "./views/login";
 import { renderNotFoundPage } from "./views/not-found";
@@ -132,9 +133,12 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
   }
 
   if (url.pathname === "/") {
+    const sentHistory = env.DB ? await loadSentPostHistory(env.DB) : [];
+
     return htmlResponse(
       renderHomePage({
         backupConfigured: Boolean(env.BACKUP_BUCKET),
+        sentHistory,
         user: sessionUser,
       }),
     );

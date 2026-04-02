@@ -19,6 +19,7 @@ test("requires login before showing the application home", async ({ page }) => {
   await expect(page.getByLabel("LinkedIn post copy")).toBeVisible();
   await expect(page.getByLabel("X post copy")).not.toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Queued posts" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Sent history" })).toBeVisible();
   await expect(page.getByRole("link", { name: "/api/health" })).toBeVisible();
 
   await xTab.click();
@@ -32,6 +33,12 @@ test("requires login before showing the application home", async ({ page }) => {
 
   await expect(page.locator("[data-metric-queued]")).toHaveText("5");
   await expect(page.locator("[data-queued-posts] article").first()).toContainText("Queue this X draft for the afternoon slot.");
+
+  await page.getByRole("button", { name: /X 2/ }).click();
+  await expect(page.locator('[data-history-filter="x"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("[data-sent-history-list] article:visible")).toHaveCount(2);
+  await expect(page.locator("[data-sent-history-list] article:visible").first()).toContainText("X");
+  await expect(page.locator("[data-history-count]")).toHaveText("2");
 });
 
 test("serves the health endpoint", async ({ request }) => {
