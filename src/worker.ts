@@ -15,9 +15,10 @@ import { runAutomatedBackup } from "./backup";
 import { canAccessDemo, getDemoDrafts, getDemoSentHistory, loadDemoQueuedPosts, scheduleDemoPost } from "./demo";
 import { loadSentPostHistory } from "./history";
 import { listAppRoutes } from "./app-routes";
+import { renderComposePage } from "./views/compose";
 import { renderDemoPage } from "./views/demo";
 import { renderHistoryPage } from "./views/history";
-import { HOME_PAGE_SCRIPT, renderHomePage } from "./views/home";
+import { HOME_PAGE_SCRIPT, renderQueuePage } from "./views/home";
 import { renderLoginPage } from "./views/login";
 import { renderNotFoundPage } from "./views/not-found";
 import { cssResponse, htmlResponse, javascriptResponse, redirectResponse } from "./views/shared";
@@ -138,8 +139,17 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
 
   if (url.pathname === "/") {
     return htmlResponse(
-      renderHomePage({
+      renderQueuePage({
         backupConfigured: Boolean(env.BACKUP_BUCKET),
+        demoAvailable: canAccessDemo(request, env),
+        user: sessionUser,
+      }),
+    );
+  }
+
+  if (url.pathname === "/compose") {
+    return htmlResponse(
+      renderComposePage({
         demoAvailable: canAccessDemo(request, env),
         user: sessionUser,
       }),

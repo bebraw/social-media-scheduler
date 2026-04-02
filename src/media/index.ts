@@ -135,6 +135,9 @@ function normalizeImageContentType(value: string): string | null {
 }
 
 function sanitizeFileName(value: string): string {
-  const normalized = value.trim().replace(/\s+/g, "-").replace(/[^a-zA-Z0-9._-]/g, "");
+  const normalized = value
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-zA-Z0-9._-]/g, "");
   return normalized || "image";
 }

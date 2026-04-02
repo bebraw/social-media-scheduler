@@ -300,7 +300,9 @@ function decodeTestR2Value(value: string | ArrayBuffer | ArrayBufferView): strin
     return value;
   }
 
-  return new TextDecoder().decode(value instanceof ArrayBuffer ? new Uint8Array(value) : new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
+  return new TextDecoder().decode(
+    value instanceof ArrayBuffer ? new Uint8Array(value) : new Uint8Array(value.buffer, value.byteOffset, value.byteLength),
+  );
 }
 
 function toArrayBuffer(value: string | ArrayBuffer | ArrayBufferView): ArrayBuffer {
@@ -312,5 +314,7 @@ function toArrayBuffer(value: string | ArrayBuffer | ArrayBufferView): ArrayBuff
     return value.slice(0);
   }
 
-  return value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
+  const copy = new Uint8Array(value.byteLength);
+  copy.set(new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
+  return copy.buffer;
 }

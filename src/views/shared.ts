@@ -45,9 +45,10 @@ export function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
 
-export function renderWorkspaceNav(options: { activePath: "/" | "/history" | "/demo"; demoAvailable?: boolean }): string {
-  const links: Array<{ href: "/" | "/history" | "/demo"; label: string }> = [
-    { href: "/", label: "Workspace" },
+export function renderWorkspaceNav(options: { activePath: "/" | "/compose" | "/history" | "/demo"; demoAvailable?: boolean }): string {
+  const links: Array<{ href: "/" | "/compose" | "/history" | "/demo"; label: string }> = [
+    { href: "/", label: "Queue" },
+    { href: "/compose", label: "Compose" },
     { href: "/history", label: "Sent history" },
   ];
   if (options.demoAvailable) {

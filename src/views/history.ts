@@ -105,8 +105,8 @@ export function renderHistoryPage({ demoAvailable, sentHistory, user }: HistoryP
                   <p class="mt-2 text-2xl font-semibold text-app-text">3</p>
                 </div>
                 <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
-                  <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Home</p>
-                  <a class="mt-2 inline-flex text-sm font-semibold text-app-accent-strong underline decoration-app-accent/25 underline-offset-4" href="/">Return to workspace</a>
+                  <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Queue</p>
+                  <a class="mt-2 inline-flex text-sm font-semibold text-app-accent-strong underline decoration-app-accent/25 underline-offset-4" href="/">Return to queue</a>
                 </div>
               </div>
             </section>

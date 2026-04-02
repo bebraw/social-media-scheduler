@@ -109,7 +109,7 @@ describe("worker", () => {
     await expect(response.text()).resolves.toContain("Invalid credentials.");
   });
 
-  it("renders the authenticated home page", async () => {
+  it("renders the authenticated queue page", async () => {
     const db = createTestDatabase();
     await seedAuthUser(db, {
       name: "Scheduler Admin",
@@ -135,11 +135,41 @@ describe("worker", () => {
 
     expect(response.status).toBe(200);
     const body = await response.text();
-    expect(body).toContain("Social Media Scheduler");
+    expect(body).toContain("Queue");
     expect(body).toContain("Session");
     expect(body).toContain("Scheduler Admin");
+    expect(body).toContain("Open composer");
     expect(body).toContain("View sent history");
+    expect(body).not.toContain("Channel drafts");
     expect(body).not.toContain("Open demo mode");
+  });
+
+  it("renders the authenticated compose page", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+
+    const response = await handleRequest(
+      new Request("http://example.com/compose", {
+        headers: {
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).toContain("Compose");
+    expect(body).toContain("Channel drafts");
+    expect(body).toContain("data-queue-button");
   });
 
   it("renders the authenticated history page", async () => {
@@ -271,7 +301,7 @@ describe("worker", () => {
     await expect(response.json()).resolves.toEqual({
       ok: true,
       name: "social-media-scheduler",
-      routes: ["/", "/history", "/login", "/api/health"],
+      routes: ["/", "/compose", "/history", "/login", "/api/health"],
     });
   });
 
@@ -281,7 +311,7 @@ describe("worker", () => {
     await expect(response.json()).resolves.toEqual({
       ok: true,
       name: "social-media-scheduler",
-      routes: ["/", "/history", "/login", "/api/health", "/demo"],
+      routes: ["/", "/compose", "/history", "/login", "/api/health", "/demo"],
     });
   });
 

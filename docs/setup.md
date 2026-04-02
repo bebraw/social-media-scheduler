@@ -113,6 +113,8 @@ npm run dev
 
 Open the local URL shown by Wrangler, usually `http://127.0.0.1:8787`.
 
+After signing in, the app opens on the default `Queue` view at `/`. Use `/compose` for the dedicated post composer.
+
 If `DEMO_MODE=true` is set in `.dev.vars`, local development also exposes `/demo` on loopback hosts for seeded demo data and local-only scheduling practice.
 
 ## First Run Checklist

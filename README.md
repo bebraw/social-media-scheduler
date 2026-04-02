@@ -45,7 +45,8 @@ Local development in this repo targets macOS. Other platforms may need script an
 ## Starter App
 
 - `GET /login` serves the local sign-in page.
-- `GET /` redirects anonymous users to login and serves the authenticated scheduler workspace for signed-in users.
+- `GET /` redirects anonymous users to login and serves the authenticated queue view for signed-in users.
+- `GET /compose` serves the authenticated post composer for signed-in users.
 - `GET /history` serves the authenticated sent-history page with per-channel inspection filters for signed-in users.
 - `GET /demo` serves the development-only demo workspace when `DEMO_MODE=true` is set locally and the request stays on a loopback host.
 - `GET /styles.css` serves the generated Tailwind stylesheet.
@@ -59,6 +60,7 @@ Local development in this repo targets macOS. Other platforms may need script an
 - `src/backup/` holds the scheduled backup export and R2 storage helpers.
 - `src/demo/` holds development-only demo gating, seeded data, and local demo scheduling helpers.
 - `src/history/` holds sent-post history loading for the normal authenticated routes.
+- `src/queue/` holds channel constraint logic for the dedicated composer and related queue behavior.
 - `src/api/` holds API response modules such as the health endpoint.
-- `src/views/` holds HTML rendering modules for the starter UI.
+- `src/views/` holds HTML rendering modules for the queue, compose, history, and demo surfaces.
 - Tests live next to the code they exercise under `src/`.

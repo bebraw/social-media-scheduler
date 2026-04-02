@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("requires login before showing the application home", async ({ page }) => {
+test("requires login before showing the default queue view", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { level: 1, name: "Sign in" })).toBeVisible();
@@ -8,7 +8,19 @@ test("requires login before showing the application home", async ({ page }) => {
   await page.getByLabel("Password").fill("test-password-123");
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  await expect(page.getByRole("heading", { level: 1, name: "Social Media Scheduler" })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Queue" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Queue status" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Compose", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open composer" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Queued posts" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "View sent history" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open demo mode" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "/api/health" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Compose", exact: true }).click();
+  await expect(page).toHaveURL(/\/compose$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Compose" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Channel drafts" })).toBeVisible();
   const linkedInTab = page.getByRole("tab", { name: /LinkedIn/ });
   const xTab = page.getByRole("tab", { name: /X/ });
@@ -18,10 +30,6 @@ test("requires login before showing the application home", async ({ page }) => {
   await expect(blueskyTab).toHaveAttribute("aria-selected", "false");
   await expect(page.getByLabel("LinkedIn post copy")).toBeVisible();
   await expect(page.getByLabel("X post copy")).not.toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "Queued posts" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "View sent history" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open demo mode" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "/api/health" })).toBeVisible();
 
   await xTab.click();
   await expect(xTab).toHaveAttribute("aria-selected", "true");
@@ -35,7 +43,7 @@ test("requires login before showing the application home", async ({ page }) => {
   await expect(page.locator("[data-metric-queued]")).toHaveText("1");
   await expect(page.locator("[data-queued-posts] article").first()).toContainText("Queue this X draft for the afternoon slot.");
 
-  await page.getByRole("link", { name: "View sent history" }).click();
+  await page.getByRole("link", { name: "Sent history", exact: true }).click();
   await expect(page).toHaveURL(/\/history$/);
   await expect(page.getByRole("heading", { level: 1, name: "Sent History" })).toBeVisible();
   await expect(page.getByText("No sent posts are available yet.")).toBeVisible();
@@ -43,13 +51,14 @@ test("requires login before showing the application home", async ({ page }) => {
   await page.getByRole("link", { name: "Demo mode" }).click();
   await expect(page).toHaveURL(/\/demo$/);
   await expect(page.getByRole("heading", { level: 1, name: "Demo Mode" })).toBeVisible();
+  const queuedBeforeDemoPost = Number((await page.locator("[data-metric-queued]").textContent()) || "0");
   await page.getByRole("tab", { name: /X/ }).click();
   await page.getByLabel("X post copy").fill("Queue this demo-only post for tomorrow.");
   await page.getByLabel("X queue slot").selectOption("Tomorrow, 09:00");
   await page.getByRole("button", { name: "Schedule demo post" }).click();
 
   await expect(page).toHaveURL(/\/demo$/);
-  await expect(page.locator("[data-metric-queued]")).toHaveText("4");
+  await expect(page.locator("[data-metric-queued]")).toHaveText(String(queuedBeforeDemoPost + 1));
   await expect(page.locator("[data-queued-posts] article").first()).toContainText("Queue this demo-only post for tomorrow.");
   await page.getByRole("button", { name: /X 2/ }).click();
   await expect(page.locator('[data-history-filter="x"]')).toHaveAttribute("aria-pressed", "true");
@@ -64,7 +73,7 @@ test("serves the health endpoint", async ({ request }) => {
   await expect(response.json()).resolves.toEqual({
     ok: true,
     name: "social-media-scheduler",
-    routes: ["/", "/history", "/login", "/api/health", "/demo"],
+    routes: ["/", "/compose", "/history", "/login", "/api/health", "/demo"],
   });
 });
 

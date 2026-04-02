@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { CHANNEL_CONSTRAINTS } from "../queue/constraints";
-import { renderHomePage } from "./home";
+import { renderQueuePage } from "./home";
 
-describe("renderHomePage", () => {
-  it("renders tabbed channel drafts with interaction hooks", () => {
-    const html = renderHomePage({
+describe("renderQueuePage", () => {
+  it("renders the default queue view without the composer", () => {
+    const html = renderQueuePage({
       backupConfigured: true,
       demoAvailable: false,
       user: {
@@ -13,23 +12,15 @@ describe("renderHomePage", () => {
       },
     });
 
-    expect(html).toContain("Social Media Scheduler");
-    expect(html).toContain("Channel drafts");
-    expect(html).toContain("LinkedIn");
-    expect(html).toContain("X");
-    expect(html).toContain("Bluesky");
-    expect(html).toContain("3000 characters");
-    expect(html).toContain("280 weighted characters");
-    expect(html).toContain("300 grapheme clusters");
-    expect(html).toContain('role="tablist"');
-    expect(html).toContain("data-channel-tab");
-    expect(html).toContain("data-channel-column");
-    expect(html).toContain('aria-selected="true"');
-    expect(html).toContain("hidden");
-    expect(html).toContain("data-queue-button");
+    expect(html).toContain("Queue");
     expect(html).toContain('src="/home.js"');
     expect(html).toContain("Queued posts");
+    expect(html).toContain("Open composer");
     expect(html).toContain("View sent history");
+    expect(html).not.toContain("Channel drafts");
+    expect(html).not.toContain("data-channel-tab");
+    expect(html).not.toContain("data-channel-column");
+    expect(html).not.toContain("data-queue-button");
     expect(html).not.toContain("Open demo mode");
     expect(html).not.toContain("data-history-filter");
     expect(html).toContain("Scheduler Admin");
@@ -37,7 +28,7 @@ describe("renderHomePage", () => {
   });
 
   it("renders the backup warning when backups are not configured", () => {
-    const html = renderHomePage({
+    const html = renderQueuePage({
       backupConfigured: false,
       demoAvailable: false,
       user: {
@@ -49,26 +40,16 @@ describe("renderHomePage", () => {
     expect(html).toContain("R2 backup binding is not configured yet.");
   });
 
-  it("skips a draft column if its constraint metadata is missing", () => {
-    const removedConstraint = CHANNEL_CONSTRAINTS.pop();
+  it("shows the demo card when demo mode is available", () => {
+    const html = renderQueuePage({
+      backupConfigured: true,
+      demoAvailable: true,
+      user: {
+        name: "Scheduler Admin",
+        role: "editor",
+      },
+    });
 
-    try {
-      const html = renderHomePage({
-        backupConfigured: true,
-        demoAvailable: true,
-        user: {
-          name: "Scheduler Admin",
-          role: "editor",
-        },
-      });
-
-      expect(removedConstraint).toBeDefined();
-      expect(html).not.toContain('data-channel-id="bluesky"');
-      expect(html).toContain("Open demo mode");
-    } finally {
-      if (removedConstraint) {
-        CHANNEL_CONSTRAINTS.push(removedConstraint);
-      }
-    }
+    expect(html).toContain("Open demo mode");
   });
 });

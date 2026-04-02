@@ -23,7 +23,7 @@ The repo now uses:
 - an additional loopback-host check so demo mode is available only through local development URLs such as `127.0.0.1` and `localhost`
 - local D1-backed app state for demo scheduling changes so demo queue writes stay inside the local sandbox
 
-The normal authenticated routes `/` and `/history` must not rely on seeded demo content.
+The normal authenticated routes `/`, `/compose`, and `/history` must not rely on seeded demo content.
 
 ## Trigger
 
