@@ -1,3 +1,4 @@
+import { renderButton } from "./components";
 import { escapeHtml } from "./shared";
 
 interface LoginPageOptions {
@@ -42,7 +43,7 @@ export function renderLoginPage({ error, userCount }: LoginPageOptions): string 
               <span class="text-app-text">Password</span>
               <input class="rounded-xl border border-app-line bg-white px-4 py-3 text-base outline-none transition placeholder:text-app-text-soft/70 focus:border-app-accent focus:ring-2 focus:ring-app-accent/10" name="password" type="password" autocomplete="current-password" required>
             </label>
-            <button class="mt-2 rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-app-accent-strong" type="submit">Sign in</button>
+            ${renderButton({ className: "mt-2", label: "Sign in", type: "submit", variant: "primary" })}
           </form>
         </div>
       </section>

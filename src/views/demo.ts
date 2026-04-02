@@ -1,6 +1,7 @@
 import type { DemoDraft, DemoQueuedPost } from "../demo";
 import type { SentPostHistoryEntry } from "../history";
 import { renderQueuedPostsSection, renderStatGrid } from "./cards";
+import { renderPanel, renderPill, renderSectionHeader } from "./components";
 import { renderDemoDraftPanels, renderDraftTabs, resolveDraftEntries } from "./draft-editor";
 import { HOME_PAGE_SCRIPT } from "./home-ui";
 import { formatChannelLabel, renderHistoryCards, renderHistoryFilters } from "./history-components";
@@ -46,31 +47,29 @@ export function renderDemoPage({ drafts, queuedPosts, sentHistory, user }: DemoP
         <h2 class="text-lg font-semibold tracking-[-0.02em] text-amber-950">Development-only sandbox</h2>
         <p class="mt-3 text-sm leading-6 text-amber-900">Demo mode is available only in local development when <code>DEMO_MODE=true</code> is set. Scheduling here updates local demo data only and does not hit any external publishing service.</p>
       </section>
-      <section class="rounded-xl border border-app-line bg-white p-6">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <h2 class="text-lg font-semibold tracking-[-0.02em]">Demo drafts</h2>
-            <p class="mt-1 text-sm leading-6 text-app-text-soft">Preloaded example drafts for local exploration.</p>
-          </div>
-          <span class="rounded-full bg-app-canvas px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Sandbox data</span>
-        </div>
+      ${renderPanel(`
+        ${renderSectionHeader({
+          description: "Preloaded example drafts for local exploration.",
+          title: "Demo drafts",
+          trailing: renderPill("Sandbox data"),
+        })}
         <div class="mt-5 grid gap-4">
           <div class="grid gap-2 sm:grid-cols-3" role="tablist" aria-label="Demo draft channels">
             ${renderDraftTabs(draftEntries, "demo")}
           </div>
           ${renderDemoDraftPanels(draftEntries)}
         </div>
-      </section>
+      `)}
       <section class="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
         <section class="grid gap-4">
-          <section class="rounded-xl border border-app-line bg-white p-6">
+          ${renderPanel(`
             <h2 class="text-lg font-semibold tracking-[-0.02em]">Demo queue</h2>
             ${renderStatGrid([
               { label: "Queued", value: String(queuedPosts.length), valueAttributes: "data-metric-queued" },
               { label: "Publishing today", value: String(Math.min(queuedPosts.length, 2)), valueAttributes: "data-metric-today" },
               { label: "Channels", value: "3" },
             ])}
-          </section>
+          `)}
         </section>
         ${renderQueuedPostsSection({
           badge: "Local only",
@@ -79,7 +78,7 @@ export function renderDemoPage({ drafts, queuedPosts, sentHistory, user }: DemoP
           title: "Queued demo posts",
         })}
       </section>
-      <section class="rounded-xl border border-app-line bg-white p-6">
+      ${renderPanel(`
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 class="text-lg font-semibold tracking-[-0.02em]">Demo sent history</h2>
@@ -92,7 +91,7 @@ export function renderDemoPage({ drafts, queuedPosts, sentHistory, user }: DemoP
         </div>
         <div class="mt-5 grid gap-3" data-sent-history-list>${renderHistoryCards(sentHistory)}</div>
         <p class="mt-4 hidden rounded-xl border border-dashed border-app-line bg-app-canvas/50 px-4 py-3 text-sm text-app-text-soft" data-history-empty>No demo sent posts match this channel yet.</p>
-      </section>
+      `)}
     </div>`,
     demoAvailable: true,
     description: "Development-only sandbox with seeded data for walkthroughs, experiments, and safe scheduling practice.",

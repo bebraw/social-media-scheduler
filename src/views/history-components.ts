@@ -1,3 +1,4 @@
+import { renderPill } from "./components";
 import type { SentPostHistoryEntry } from "../history";
 import type { QueueChannel } from "../queue/constraints";
 import { escapeHtml } from "./shared";
@@ -37,9 +38,7 @@ export function renderHistoryCards(sentHistory: SentPostHistoryEntry[]): string 
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div class="flex flex-wrap items-center gap-2">
-              <span class="rounded-full bg-app-canvas px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-app-accent-strong">${escapeHtml(
-                formatChannelLabel(entry.channel),
-              )}</span>
+              ${renderPill(formatChannelLabel(entry.channel), { tone: "quiet-accent" })}
               <span class="text-xs font-medium uppercase tracking-[0.12em] text-app-text-soft">${escapeHtml(entry.project)}</span>
             </div>
             <p class="mt-3 max-w-2xl text-sm leading-6 text-app-text">${escapeHtml(entry.body)}</p>

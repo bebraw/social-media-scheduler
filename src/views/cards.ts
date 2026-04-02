@@ -1,3 +1,4 @@
+import { renderPanel, renderSectionHeader } from "./components";
 import { escapeHtml } from "./shared";
 
 interface StatCard {
@@ -24,14 +25,13 @@ export function renderStatGrid(cards: StatCard[]): string {
 export function renderQueuedPostsSection({ badge, description, emptyText, postsMarkup = "", title }: QueuedPostsSectionOptions): string {
   const hasPosts = postsMarkup.trim().length > 0;
 
-  return `<section class="rounded-xl border border-app-line bg-white p-6">
-    <div class="flex items-center justify-between gap-3">
-      <div>
-        <h2 class="text-lg font-semibold tracking-[-0.02em]">${escapeHtml(title)}</h2>
-        <p class="mt-1 text-sm leading-6 text-app-text-soft">${escapeHtml(description)}</p>
-      </div>
-      <span class="text-sm font-medium text-app-text-soft">${escapeHtml(badge)}</span>
-    </div>
+  return renderPanel(`
+    ${renderSectionHeader({
+      className: "items-start",
+      description,
+      title,
+      trailing: `<span class="text-sm font-medium text-app-text-soft">${escapeHtml(badge)}</span>`,
+    })}
     <div class="mt-5 grid gap-3" data-queued-posts>${postsMarkup}</div>
     ${
       emptyText
@@ -40,7 +40,7 @@ export function renderQueuedPostsSection({ badge, description, emptyText, postsM
           )}</p>`
         : ""
     }
-  </section>`;
+  `);
 }
 
 function renderStatCard(card: StatCard): string {

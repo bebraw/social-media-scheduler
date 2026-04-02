@@ -1,4 +1,7 @@
+import { renderButton, renderPanel } from "./components";
+export { escapeHtml } from "./html";
 import { buildPostImagePath, MAX_POST_IMAGE_ALT_TEXT_LENGTH, MAX_POST_IMAGE_ATTACHMENTS, type PostImageAttachment } from "../media";
+import { escapeHtml } from "./html";
 
 export function htmlResponse(body: string, status = 200): Response {
   return new Response(body, {
@@ -41,10 +44,6 @@ export function redirectResponse(location: string, init: ResponseInit = {}): Res
   });
 }
 
-export function escapeHtml(value: string): string {
-  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
-}
-
 export function renderWorkspaceNav(options: { activePath: "/" | "/compose" | "/history" | "/demo"; demoAvailable?: boolean }): string {
   const links: Array<{ href: "/" | "/compose" | "/history" | "/demo"; label: string }> = [
     { href: "/", label: "Queue" },
@@ -73,13 +72,14 @@ export function renderSessionPanel(user: { name: string; role: string }): string
     <p class="mt-2 text-sm font-medium text-app-text">${escapeHtml(user.name)}</p>
     <p class="text-sm text-app-text-soft">${escapeHtml(user.role)}</p>
     <form class="mt-4" method="post" action="/logout">
-      <button class="w-full rounded-xl border border-app-line bg-white px-4 py-2.5 text-sm font-semibold text-app-text transition hover:bg-app-canvas" type="submit">Sign out</button>
+      ${renderButton({ className: "w-full bg-white py-2.5 hover:bg-app-canvas", label: "Sign out", type: "submit" })}
     </form>
   </div>`;
 }
 
 export function renderAttachmentComposer(options: { channelName: string; serverMode: boolean }): string {
-  return `<section class="rounded-xl border border-app-line bg-app-canvas/40 px-4 py-4">
+  return renderPanel(
+    `
     <div class="flex items-start justify-between gap-3">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Images</p>
@@ -93,7 +93,9 @@ export function renderAttachmentComposer(options: { channelName: string; serverM
     </label>
     <div class="mt-4 grid gap-3" data-attachment-list></div>
     <p class="rounded-xl border border-dashed border-app-line bg-white/70 px-4 py-3 text-sm text-app-text-soft" data-attachment-empty>No images attached yet.</p>
-  </section>`;
+  `,
+    { className: "bg-app-canvas/40 px-4 py-4" },
+  );
 }
 
 export function renderPostImageAttachments(attachments: PostImageAttachment[]): string {

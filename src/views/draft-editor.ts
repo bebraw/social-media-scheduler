@@ -1,5 +1,6 @@
 import { CHANNEL_CONSTRAINTS, describeUsage, type ChannelConstraint, type QueueChannel } from "../queue/constraints";
 import type { DemoDraft } from "../demo";
+import { renderButton } from "./components";
 import { escapeHtml, renderAttachmentComposer } from "./shared";
 
 export interface ComposerDraft {
@@ -106,8 +107,8 @@ export function renderComposeDraftPanels(entries: DraftEntry[]): string {
           ${renderAttachmentComposer({ channelName: constraint.name, serverMode: false })}
           ${renderSlotSelector(constraint.name, draft.slot)}
           <div class="flex flex-wrap gap-3 pt-2">
-            <button class="rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-app-accent-strong" type="button" data-queue-button data-queue-mode="client">Queue post</button>
-            <button class="rounded-xl border border-app-line bg-white px-4 py-3 text-sm font-semibold text-app-text transition hover:bg-app-canvas" type="button">Save draft</button>
+            ${renderButton({ attributes: 'data-queue-button data-queue-mode="client"', label: "Queue post", variant: "primary" })}
+            ${renderButton({ className: "bg-white hover:bg-app-canvas", label: "Save draft" })}
           </div>`,
         statusClass: buildUsageStateClass(usage.state),
         statusLabel: usage.state === "over" ? "Over limit" : usage.state === "warning" ? "Close to limit" : "Ready",
@@ -141,7 +142,7 @@ export function renderDemoDraftPanels(entries: DraftEntry[]): string {
           ${renderAttachmentComposer({ channelName: constraint.name, serverMode: true })}
           ${renderSlotSelector(constraint.name, draft.slot, "slot")}
           <div class="flex flex-wrap gap-3 pt-2">
-            <button class="rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-app-accent-strong" type="submit" data-queue-button data-queue-mode="server">Schedule demo post</button>
+            ${renderButton({ attributes: 'data-queue-button data-queue-mode="server"', label: "Schedule demo post", type: "submit", variant: "primary" })}
           </div>`,
         statusClass: "rounded-full bg-app-accent px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-white",
         statusLabel: "Ready",
