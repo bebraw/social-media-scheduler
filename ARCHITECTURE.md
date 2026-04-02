@@ -8,6 +8,7 @@ Use this file for global constraints. Use feature specs under `specs/` for domai
 
 - Keep the template lightweight, reusable, easy to clone, and easy to prune.
 - Keep the scheduler domain model intentionally abstract until a concrete adapter or workflow needs a stronger schema.
+- Keep demo-only surfaces isolated from the normal authenticated routes and available only in local development.
 - Treat repo documentation as living context that should evolve with the code.
 - Treat architectural decisions as explicit records, not implicit tribal knowledge.
 - Add or update an ADR in `docs/adrs/` whenever a change introduces or changes a lasting architectural constraint, selects between credible architectural alternatives, or replaces an earlier decision.

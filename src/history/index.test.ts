@@ -3,13 +3,12 @@ import { loadSentPostHistory } from "./index";
 import { createTestDatabase, seedStateEntry } from "../test-support";
 
 describe("loadSentPostHistory", () => {
-  it("returns fallback entries when no stored history exists", async () => {
+  it("returns no entries when no stored history exists", async () => {
     const db = createTestDatabase();
 
     const history = await loadSentPostHistory(db);
 
-    expect(history.length).toBeGreaterThan(0);
-    expect(history[0]?.channel).toBe("linkedin");
+    expect(history).toEqual([]);
   });
 
   it("returns stored history entries sorted from newest to oldest", async () => {
@@ -38,7 +37,7 @@ describe("loadSentPostHistory", () => {
     expect(history.map((entry) => entry.id)).toEqual(["newer-linkedin", "older-x"]);
   });
 
-  it("falls back when stored history is invalid", async () => {
+  it("returns no entries when stored history is invalid", async () => {
     const db = createTestDatabase();
     seedStateEntry(db, "sent_post_history_v1", [
       {
@@ -53,7 +52,6 @@ describe("loadSentPostHistory", () => {
 
     const history = await loadSentPostHistory(db);
 
-    expect(history.length).toBeGreaterThan(0);
-    expect(history.some((entry) => entry.id === "broken-entry")).toBe(false);
+    expect(history).toEqual([]);
   });
 });

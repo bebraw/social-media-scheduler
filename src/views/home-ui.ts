@@ -3,6 +3,7 @@ const channelColumns = Array.from(document.querySelectorAll("[data-channel-colum
 const queueList = document.querySelector("[data-queued-posts]");
 const queuedCount = document.querySelector("[data-metric-queued]");
 const todayCount = document.querySelector("[data-metric-today]");
+const queuedEmpty = document.querySelector("[data-queued-empty]");
 const historyFilters = Array.from(document.querySelectorAll("[data-history-filter]"));
 const historyCards = Array.from(document.querySelectorAll("[data-history-card]"));
 const historyCount = document.querySelector("[data-history-count]");
@@ -104,6 +105,7 @@ for (const column of channelColumns) {
 
   const channel = column.getAttribute("data-channel-id") || "";
   const limit = Number(column.getAttribute("data-channel-limit") || "0");
+  const queueMode = queueButton instanceof HTMLElement ? queueButton.getAttribute("data-queue-mode") || "client" : "client";
 
   const renderUsage = () => {
     const usage = describeUsage(channel, textarea.value, limit);
@@ -111,13 +113,19 @@ for (const column of channelColumns) {
     statusBadge.textContent = usage.stateLabel;
     statusBadge.dataset.state = usage.state;
     statusBadge.className = buildStatusClass(usage.state);
-    queueButton?.toggleAttribute("disabled", usage.state === "over");
+    if (queueButton instanceof HTMLButtonElement) {
+      queueButton.disabled = usage.state === "over";
+    }
   };
 
   textarea.addEventListener("input", renderUsage);
   renderUsage();
 
-  queueButton?.addEventListener("click", () => {
+  if (!(queueButton instanceof HTMLButtonElement) || queueMode !== "client") {
+    continue;
+  }
+
+  queueButton.addEventListener("click", () => {
     if (!(queueList instanceof HTMLElement)) {
       return;
     }
@@ -136,6 +144,7 @@ for (const column of channelColumns) {
 
     const card = document.createElement("article");
     card.className = "rounded-xl border border-app-line bg-white p-5";
+    card.setAttribute("data-queued-post-card", "");
     card.innerHTML = \`
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -272,17 +281,20 @@ function updateMetrics() {
     return;
   }
 
-  const totalCards = queueList.querySelectorAll("article").length;
+  const totalCards = queueList.querySelectorAll("[data-queued-post-card]").length;
   if (queuedCount instanceof HTMLElement) {
     queuedCount.textContent = String(totalCards);
   }
   if (todayCount instanceof HTMLElement) {
     todayCount.textContent = String(Math.min(totalCards, 2));
   }
+  if (queuedEmpty instanceof HTMLElement) {
+    queuedEmpty.hidden = totalCards !== 0;
+  }
 }
 
 function setupHistoryFilters() {
-  if (historyFilters.length === 0 || historyCards.length === 0) {
+  if (historyFilters.length === 0) {
     return;
   }
 

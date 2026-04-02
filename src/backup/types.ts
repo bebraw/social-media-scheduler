@@ -29,10 +29,13 @@ export interface R2ListResult {
 
 export interface R2ObjectBodyLike {
   text(): Promise<string>;
+  arrayBuffer?(): Promise<ArrayBuffer>;
+  httpMetadata?: R2HttpMetadata;
+  customMetadata?: Record<string, string>;
 }
 
 export interface R2BucketLike {
-  put(key: string, value: string, options?: R2PutOptions): Promise<unknown>;
+  put(key: string, value: string | ArrayBuffer | ArrayBufferView, options?: R2PutOptions): Promise<unknown>;
   list?(options?: R2ListOptions): Promise<R2ListResult>;
   get?(key: string): Promise<R2ObjectBodyLike | null>;
 }

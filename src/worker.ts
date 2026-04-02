@@ -4,15 +4,19 @@ import {
   clearSessionCookie,
   createSessionToken,
   getSessionUser,
+  isReadonlyUser,
   resolveAuthState,
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
   verifyLoginCredentials,
 } from "./auth";
 import type { Env, ScheduledControllerLike } from "./app-env";
-import { appRoutes } from "./app-routes";
 import { runAutomatedBackup } from "./backup";
+import { canAccessDemo, getDemoDrafts, getDemoSentHistory, loadDemoQueuedPosts, scheduleDemoPost } from "./demo";
 import { loadSentPostHistory } from "./history";
+import { listAppRoutes } from "./app-routes";
+import { renderDemoPage } from "./views/demo";
+import { renderHistoryPage } from "./views/history";
 import { HOME_PAGE_SCRIPT, renderHomePage } from "./views/home";
 import { renderLoginPage } from "./views/login";
 import { renderNotFoundPage } from "./views/not-found";
@@ -44,7 +48,7 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
   }
 
   if (url.pathname === "/api/health") {
-    return createHealthResponse(appRoutes.map((route) => route.path));
+    return createHealthResponse(listAppRoutes({ includeDemo: canAccessDemo(request, env) }).map((route) => route.path));
   }
 
   const authState = await resolveAuthState(env);
@@ -133,15 +137,68 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
   }
 
   if (url.pathname === "/") {
-    const sentHistory = env.DB ? await loadSentPostHistory(env.DB) : [];
-
     return htmlResponse(
       renderHomePage({
         backupConfigured: Boolean(env.BACKUP_BUCKET),
+        demoAvailable: canAccessDemo(request, env),
+        user: sessionUser,
+      }),
+    );
+  }
+
+  if (url.pathname === "/history") {
+    const sentHistory = env.DB ? await loadSentPostHistory(env.DB) : [];
+
+    return htmlResponse(
+      renderHistoryPage({
+        demoAvailable: canAccessDemo(request, env),
         sentHistory,
         user: sessionUser,
       }),
     );
+  }
+
+  if (url.pathname === "/demo" || url.pathname === "/demo/queue") {
+    if (!canAccessDemo(request, env)) {
+      return htmlResponse(renderNotFoundPage(url.pathname), 404);
+    }
+
+    if (url.pathname === "/demo/queue" && request.method === "POST") {
+      if (!env.DB) {
+        return new Response("D1 binding is missing.", { status: 500 });
+      }
+      if (isReadonlyUser(sessionUser)) {
+        return new Response("Readonly users cannot schedule demo posts.", { status: 403 });
+      }
+
+      const formData = await request.formData();
+      const channel = String(formData.get("channel") || "");
+      const body = String(formData.get("body") || "");
+      const slot = String(formData.get("slot") || "");
+      if (channel !== "linkedin" && channel !== "x" && channel !== "bluesky") {
+        return new Response("Unsupported demo channel.", { status: 400 });
+      }
+      await scheduleDemoPost(env.DB, {
+        channel,
+        body,
+        slot,
+      });
+
+      return redirectResponse("/demo");
+    }
+
+    if (url.pathname === "/demo" && request.method === "GET") {
+      const queuedPosts = env.DB ? await loadDemoQueuedPosts(env.DB) : [];
+
+      return htmlResponse(
+        renderDemoPage({
+          drafts: getDemoDrafts(),
+          queuedPosts,
+          sentHistory: getDemoSentHistory(),
+          user: sessionUser,
+        }),
+      );
+    }
   }
 
   return htmlResponse(renderNotFoundPage(url.pathname), 404);

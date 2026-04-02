@@ -248,9 +248,9 @@ export function seedStateEntry(db: TestDatabase, key: string, value: unknown, up
 }
 
 export class TestR2Bucket implements R2BucketLike {
-  readonly objects = new Map<string, { value: string; options?: R2PutOptions }>();
+  readonly objects = new Map<string, { value: string | ArrayBuffer | ArrayBufferView; options?: R2PutOptions }>();
 
-  async put(key: string, value: string, options?: R2PutOptions): Promise<void> {
+  async put(key: string, value: string | ArrayBuffer | ArrayBufferView, options?: R2PutOptions): Promise<void> {
     this.objects.set(key, {
       value,
       options,
@@ -274,7 +274,10 @@ export class TestR2Bucket implements R2BucketLike {
     }
 
     return {
-      text: async () => object.value,
+      text: async () => decodeTestR2Value(object.value),
+      arrayBuffer: async () => toArrayBuffer(object.value),
+      httpMetadata: object.options?.httpMetadata,
+      customMetadata: object.options?.customMetadata,
     };
   }
 }
@@ -290,4 +293,24 @@ export function createTestEnv(overrides: Partial<Env> = {}): Env {
     SESSION_SECRET: "test-session-secret",
     ...overrides,
   };
+}
+
+function decodeTestR2Value(value: string | ArrayBuffer | ArrayBufferView): string {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return new TextDecoder().decode(value instanceof ArrayBuffer ? new Uint8Array(value) : new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
+}
+
+function toArrayBuffer(value: string | ArrayBuffer | ArrayBufferView): ArrayBuffer {
+  if (typeof value === "string") {
+    return new TextEncoder().encode(value).buffer;
+  }
+
+  if (value instanceof ArrayBuffer) {
+    return value.slice(0);
+  }
+
+  return value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
 }

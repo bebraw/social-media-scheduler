@@ -54,12 +54,14 @@ cp .dev.vars.example .dev.vars
 Set these values in `.dev.vars`:
 
 - `SESSION_SECRET`: required, used to sign auth cookies
+- `DEMO_MODE`: optional, set to `true` if you want the local-only demo workspace at `/demo`
 - `APP_ENCRYPTION_SECRET`: optional for future encrypted adapter credentials; if omitted, future encrypted storage can fall back to `SESSION_SECRET`
 
 Example:
 
 ```env
 SESSION_SECRET=change-this-to-a-long-random-secret
+DEMO_MODE=true
 APP_ENCRYPTION_SECRET=change-this-to-a-different-long-random-secret
 ```
 
@@ -110,6 +112,8 @@ npm run dev
 ```
 
 Open the local URL shown by Wrangler, usually `http://127.0.0.1:8787`.
+
+If `DEMO_MODE=true` is set in `.dev.vars`, local development also exposes `/demo` on loopback hosts for seeded demo data and local-only scheduling practice.
 
 ## First Run Checklist
 

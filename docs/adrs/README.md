@@ -30,6 +30,7 @@ Skip an ADR for small, reversible, or purely tactical choices.
 | [ADR-012](./ADR-012-constrain-local-tooling-to-macos.md)                | Accepted   | Treat macOS as the local tooling baseline and use direct pinned Agent CI scripts.            |
 | [ADR-013](./ADR-013-return-to-npm-for-agent-ci-compatibility.md)        | Accepted   | Return to npm because local Agent CI remains unreliable with pnpm warmed dependency mounts.  |
 | [ADR-014](./ADR-014-adopt-d1-auth-and-r2-backup-foundations.md)         | Accepted   | Adopt D1-backed auth and scheduled R2 backups as the scheduler's initial operational base.   |
+| [ADR-015](./ADR-015-constrain-demo-mode-to-local-development.md)        | Accepted   | Keep seeded demo workflows on a dedicated local-only route instead of the normal app pages.  |
 
 ## Creating A New ADR
 

@@ -1,6 +1,5 @@
 import { CHANNEL_CONSTRAINTS, describeUsage, type QueueChannel } from "../queue/constraints";
-import type { SentPostHistoryEntry } from "../history";
-import { escapeHtml } from "./shared";
+import { escapeHtml, renderAttachmentComposer, renderSessionPanel, renderWorkspaceNav } from "./shared";
 import { HOME_PAGE_SCRIPT } from "./home-ui";
 
 const appTitle = "Social Media Scheduler";
@@ -8,14 +7,14 @@ const appDescription = "A private workspace for planning and reviewing social po
 
 interface HomePageOptions {
   backupConfigured: boolean;
-  sentHistory: SentPostHistoryEntry[];
+  demoAvailable: boolean;
   user: {
     name: string;
     role: string;
   };
 }
 
-export function renderHomePage({ backupConfigured, sentHistory, user }: HomePageOptions): string {
+export function renderHomePage({ backupConfigured, demoAvailable, user }: HomePageOptions): string {
   const backupStatus = backupConfigured
     ? "R2 backup binding detected. Scheduled backups can write manifests and exports."
     : "R2 backup binding is not configured yet. Auth works locally without it, but scheduled backups will skip.";
@@ -24,25 +23,25 @@ export function renderHomePage({ backupConfigured, sentHistory, user }: HomePage
       id: "linkedin" as QueueChannel,
       subtitle: "Longer project update",
       accent: "Professional update",
-      content:
-        "Shipping a quieter but more useful improvement this week: the scheduler now has private auth, backup groundwork, and a clearer queue surface for planning content across personal projects. Next I am splitting publishing logic by channel so each post can respect the norms of the platform instead of forcing one message everywhere.",
-      slot: "Tomorrow, 09:00",
+      content: "",
+      placeholder: "Write the next LinkedIn update for this project.",
+      slot: "Next available slot",
     },
     {
       id: "x" as QueueChannel,
       subtitle: "Short post with tighter budget",
       accent: "Tight summary",
-      content:
-        "Built the first queue UI for the social scheduler today. Auth and backups are in, and now I’m shaping separate post flows for LinkedIn, X, and Bluesky so each channel gets content that actually fits.",
-      slot: "Today, 16:30",
+      content: "",
+      placeholder: "Write the next X post.",
+      slot: "Next available slot",
     },
     {
       id: "bluesky" as QueueChannel,
       subtitle: "Short post with room for voice",
       accent: "Concise status post",
-      content:
-        "Sketching the channel-specific queue now: LinkedIn gets the fuller project note, X gets the compressed headline, and Bluesky gets the in-between version with a bit more personality. Real adapters come next.",
-      slot: "Thu, 11:15",
+      content: "",
+      placeholder: "Write the next Bluesky post.",
+      slot: "Next available slot",
     },
   ];
   const channelDraftEntries = channelDrafts.flatMap((draft) => {
@@ -105,7 +104,7 @@ export function renderHomePage({ backupConfigured, sentHistory, user }: HomePage
             <span>${escapeHtml(constraint.name)} post copy</span>
             <textarea class="min-h-80 rounded-xl border border-app-line bg-app-canvas/40 px-4 py-4 text-sm leading-6 text-app-text outline-none transition placeholder:text-app-text-soft/70 focus:border-app-accent focus:ring-2 focus:ring-app-accent/10" data-channel-input aria-label="${escapeHtml(
               constraint.name,
-            )} post copy">${escapeHtml(draft.content)}</textarea>
+            )} post copy" placeholder="${escapeHtml(draft.placeholder)}">${escapeHtml(draft.content)}</textarea>
           </label>
         </div>
         <div class="grid gap-3 self-start">
@@ -122,111 +121,22 @@ export function renderHomePage({ backupConfigured, sentHistory, user }: HomePage
             <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Channel note</p>
             <p class="mt-2 text-sm leading-6 text-app-text-soft">${escapeHtml(constraint.notes)}</p>
           </div>
+          ${renderAttachmentComposer({ channelName: constraint.name, serverMode: false })}
           <label class="grid gap-2 text-sm font-medium">
             <span>Queue slot</span>
             <select class="rounded-xl border border-app-line bg-white px-4 py-3 text-sm text-app-text outline-none transition focus:border-app-accent focus:ring-2 focus:ring-app-accent/10" data-channel-slot aria-label="${escapeHtml(constraint.name)} queue slot">
               <option>${escapeHtml(draft.slot)}</option>
-              <option>Next available slot</option>
+              <option>Tomorrow, 09:00</option>
               <option>Tomorrow, 13:00</option>
             </select>
           </label>
           <div class="flex flex-wrap gap-3 pt-2">
-            <button class="rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-app-accent-strong" type="button" data-queue-button>Queue post</button>
+            <button class="rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-app-accent-strong" type="button" data-queue-button data-queue-mode="client">Queue post</button>
             <button class="rounded-xl border border-app-line bg-white px-4 py-3 text-sm font-semibold text-app-text transition hover:bg-app-canvas" type="button">Save draft</button>
           </div>
         </div>
       </section>`;
     })
-    .join("");
-  const queuedPosts = [
-    {
-      channel: "X",
-      project: "Scheduler Update",
-      time: "Today, 16:30",
-      body: "Built the first channel-specific queue flow so short updates can stay tight without squeezing the longer formats.",
-      status: "Ready",
-    },
-    {
-      channel: "LinkedIn",
-      project: "Open Source Note",
-      time: "Tomorrow, 09:00",
-      body: "Writing up what changed in the worker auth setup and why the backup flow stays intentionally lightweight.",
-      status: "Needs image",
-    },
-    {
-      channel: "Bluesky",
-      project: "Scheduler Teaser",
-      time: "Thu, 11:15",
-      body: "Sketching the first queue UI for the social scheduler before wiring in real adapters.",
-      status: "Ready",
-    },
-    {
-      channel: "LinkedIn",
-      project: "Process Note",
-      time: "Fri, 14:00",
-      body: "A clearer write-up about why the scheduler treats each channel as its own draft instead of mirroring one post everywhere.",
-      status: "Review",
-    },
-  ];
-  const queuedPostsMarkup = queuedPosts
-    .map(
-      (post) => `<article class="rounded-xl border border-app-line bg-white p-5">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="rounded-full bg-app-canvas px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-app-accent-strong">${escapeHtml(post.channel)}</span>
-              <span class="text-xs font-medium uppercase tracking-[0.12em] text-app-text-soft">${escapeHtml(post.project)}</span>
-            </div>
-            <p class="mt-3 max-w-2xl text-sm leading-6 text-app-text">${escapeHtml(post.body)}</p>
-          </div>
-          <div class="sm:text-right">
-            <p class="text-sm font-medium text-app-text">${escapeHtml(post.time)}</p>
-            <p class="mt-1 text-sm text-app-text-soft">${escapeHtml(post.status)}</p>
-          </div>
-        </div>
-      </article>`,
-    )
-    .join("");
-  const historyFilterCounts = [
-    { id: "all", label: "All channels", count: sentHistory.length },
-    ...CHANNEL_CONSTRAINTS.map((constraint) => ({
-      id: constraint.id,
-      label: constraint.name,
-      count: sentHistory.filter((entry) => entry.channel === constraint.id).length,
-    })),
-  ];
-  const historyFiltersMarkup = historyFilterCounts
-    .map(
-      (filter, index) => `<button class="${buildHistoryFilterClass(index === 0)}" type="button" aria-pressed="${
-        index === 0 ? "true" : "false"
-      }" data-history-filter="${escapeHtml(filter.id)}">
-        <span>${escapeHtml(filter.label)}</span>
-        <span class="rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-app-text">${escapeHtml(String(filter.count))}</span>
-      </button>`,
-    )
-    .join("");
-  const sentHistoryMarkup = sentHistory
-    .map(
-      (entry) => `<article class="rounded-xl border border-app-line bg-white p-5" data-history-card data-history-channel="${escapeHtml(
-        entry.channel,
-      )}">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="rounded-full bg-app-canvas px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-app-accent-strong">${escapeHtml(
-                channelLabel(entry.channel),
-              )}</span>
-              <span class="text-xs font-medium uppercase tracking-[0.12em] text-app-text-soft">${escapeHtml(entry.project)}</span>
-            </div>
-            <p class="mt-3 max-w-2xl text-sm leading-6 text-app-text">${escapeHtml(entry.body)}</p>
-          </div>
-          <div class="sm:max-w-56 sm:text-right">
-            <p class="text-sm font-medium text-app-text">${escapeHtml(formatHistoryTimestamp(entry.sentAt))}</p>
-            <p class="mt-1 text-sm text-app-text-soft">${escapeHtml(entry.outcome)}</p>
-          </div>
-        </div>
-      </article>`,
-    )
     .join("");
 
   return `<!doctype html>
@@ -246,15 +156,9 @@ export function renderHomePage({ backupConfigured, sentHistory, user }: HomePage
             <div class="max-w-3xl">
               <h1 class="max-w-[11ch] text-4xl leading-none font-semibold tracking-[-0.04em] sm:text-6xl">${escapeHtml(appTitle)}</h1>
               <p class="mt-4 max-w-2xl text-base leading-7 text-app-text-soft sm:text-lg">${escapeHtml(appDescription)}</p>
+              ${renderWorkspaceNav({ activePath: "/", demoAvailable })}
             </div>
-            <div class="rounded-xl border border-app-line/80 bg-app-canvas/70 px-4 py-4 md:min-w-64">
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-app-text-soft">Session</p>
-              <p class="mt-2 text-sm font-medium text-app-text">${escapeHtml(user.name)}</p>
-              <p class="text-sm text-app-text-soft">${escapeHtml(user.role)}</p>
-              <form class="mt-4" method="post" action="/logout">
-                <button class="w-full rounded-xl border border-app-line bg-white px-4 py-2.5 text-sm font-semibold text-app-text transition hover:bg-app-canvas" type="submit">Sign out</button>
-              </form>
-            </div>
+            ${renderSessionPanel(user)}
           </div>
         </section>
         <div class="grid gap-4 px-5 py-5 sm:px-8 sm:py-8">
@@ -262,9 +166,9 @@ export function renderHomePage({ backupConfigured, sentHistory, user }: HomePage
             <div class="flex items-center justify-between gap-3">
               <div>
                 <h2 class="text-lg font-semibold tracking-[-0.02em]">Channel drafts</h2>
-                <p class="mt-1 text-sm leading-6 text-app-text-soft">Switch between LinkedIn, X, and Bluesky drafts so one channel stays in focus while the editor gets more room for real writing.</p>
+                <p class="mt-1 text-sm leading-6 text-app-text-soft">Draft channel-specific posts and keep the active writing surface focused on one channel at a time.</p>
               </div>
-              <span class="rounded-full bg-app-canvas px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Mockup + interaction</span>
+              <span class="rounded-full bg-app-canvas px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Live workspace</span>
             </div>
             <div class="mt-5 grid gap-4">
               <div class="grid gap-2 sm:grid-cols-3" role="tablist" aria-label="Draft channels">
@@ -275,54 +179,55 @@ export function renderHomePage({ backupConfigured, sentHistory, user }: HomePage
           </section>
           <section class="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
             <section class="grid gap-4">
-            <section class="rounded-xl border border-app-line bg-white p-6">
-              <h2 class="text-lg font-semibold tracking-[-0.02em]">Queue overview</h2>
-              <div class="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
-                  <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Queued</p>
-                  <p class="mt-2 text-2xl font-semibold text-app-text" data-metric-queued>4</p>
+              <section class="rounded-xl border border-app-line bg-white p-6">
+                <h2 class="text-lg font-semibold tracking-[-0.02em]">Queue overview</h2>
+                <div class="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                  <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
+                    <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Queued</p>
+                    <p class="mt-2 text-2xl font-semibold text-app-text" data-metric-queued>0</p>
+                  </div>
+                  <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
+                    <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Publishing today</p>
+                    <p class="mt-2 text-2xl font-semibold text-app-text" data-metric-today>0</p>
+                  </div>
+                  <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
+                    <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Connected channels</p>
+                    <p class="mt-2 text-2xl font-semibold text-app-text">3</p>
+                  </div>
                 </div>
-                <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
-                  <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Publishing today</p>
-                  <p class="mt-2 text-2xl font-semibold text-app-text" data-metric-today>2</p>
-                </div>
-                <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
-                  <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Connected channels</p>
-                  <p class="mt-2 text-2xl font-semibold text-app-text">3</p>
-                </div>
-              </div>
-            </section>
-            <section class="rounded-xl border border-app-line bg-white p-6">
-              <h2 class="text-lg font-semibold tracking-[-0.02em]">Operations</h2>
-              <p class="mt-3 text-sm leading-6 text-app-text-soft">${escapeHtml(backupStatus)}</p>
-              <p class="mt-4 text-sm leading-6 text-app-text-soft">Signed in as <span class="font-medium text-app-text">${escapeHtml(user.name)}</span> with <span class="font-medium text-app-text">${escapeHtml(user.role)}</span> access.</p>
-              <p class="mt-4 text-sm text-app-text-soft">Health probe: <a class="font-semibold text-app-accent-strong underline decoration-app-accent/25 underline-offset-4" href="/api/health">/api/health</a></p>
-            </section>
-          </section>
-          <section class="rounded-xl border border-app-line bg-white p-6">
-            <div class="flex items-center justify-between gap-3">
-              <div>
-                <h2 class="text-lg font-semibold tracking-[-0.02em]">Queued posts</h2>
-                <p class="mt-1 text-sm leading-6 text-app-text-soft">A simple preview of what is waiting to be published next across the broader queue.</p>
-              </div>
-              <span class="text-sm font-medium text-app-text-soft">Next 48 hours</span>
-            </div>
-            <div class="mt-5 grid gap-3" data-queued-posts>${queuedPostsMarkup}</div>
-          </section>
-          <section class="rounded-xl border border-app-line bg-white p-6">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
+              </section>
+              <section class="rounded-xl border border-app-line bg-white p-6">
+                <h2 class="text-lg font-semibold tracking-[-0.02em]">Operations</h2>
+                <p class="mt-3 text-sm leading-6 text-app-text-soft">${escapeHtml(backupStatus)}</p>
+                <p class="mt-4 text-sm leading-6 text-app-text-soft">Signed in as <span class="font-medium text-app-text">${escapeHtml(user.name)}</span> with <span class="font-medium text-app-text">${escapeHtml(user.role)}</span> access.</p>
+                <p class="mt-4 text-sm text-app-text-soft">Health probe: <a class="font-semibold text-app-accent-strong underline decoration-app-accent/25 underline-offset-4" href="/api/health">/api/health</a></p>
+              </section>
+              <section class="rounded-xl border border-app-line bg-white p-6">
                 <h2 class="text-lg font-semibold tracking-[-0.02em]">Sent history</h2>
-                <p class="mt-1 max-w-2xl text-sm leading-6 text-app-text-soft">Inspect previously sent posts by channel so you can review tone, cadence, and recent output without leaving the scheduler workspace.</p>
+                <p class="mt-3 text-sm leading-6 text-app-text-soft">Review previously sent posts on a dedicated page.</p>
+                <a class="mt-4 inline-flex rounded-xl border border-app-line bg-app-canvas px-4 py-3 text-sm font-semibold text-app-text transition hover:bg-white" href="/history">View sent history</a>
+              </section>
+              ${
+                demoAvailable
+                  ? `<section class="rounded-xl border border-app-line bg-white p-6">
+                <h2 class="text-lg font-semibold tracking-[-0.02em]">Demo mode</h2>
+                <p class="mt-3 text-sm leading-6 text-app-text-soft">Local-only sandbox with seeded data for development walkthroughs and safe scheduling experiments.</p>
+                <a class="mt-4 inline-flex rounded-xl border border-app-line bg-app-canvas px-4 py-3 text-sm font-semibold text-app-text transition hover:bg-white" href="/demo">Open demo mode</a>
+              </section>`
+                  : ""
+              }
+            </section>
+            <section class="rounded-xl border border-app-line bg-white p-6">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <h2 class="text-lg font-semibold tracking-[-0.02em]">Queued posts</h2>
+                  <p class="mt-1 text-sm leading-6 text-app-text-soft">Posts lined up across the current queue.</p>
+                </div>
+                <span class="text-sm font-medium text-app-text-soft">Next 48 hours</span>
               </div>
-              <p class="text-sm font-medium text-app-text-soft"><span data-history-count>${escapeHtml(String(sentHistory.length))}</span> posts shown</p>
-            </div>
-            <div class="mt-5 flex flex-wrap gap-2" aria-label="Sent history filters">
-              ${historyFiltersMarkup}
-            </div>
-            <div class="mt-5 grid gap-3" data-sent-history-list>${sentHistoryMarkup}</div>
-            <p class="mt-4 hidden rounded-xl border border-dashed border-app-line bg-app-canvas/50 px-4 py-3 text-sm text-app-text-soft" data-history-empty>No sent posts match this channel yet.</p>
-          </section>
+              <div class="mt-5 grid gap-3" data-queued-posts></div>
+              <p class="mt-5 rounded-xl border border-dashed border-app-line bg-app-canvas/50 px-4 py-3 text-sm text-app-text-soft" data-queued-empty>No posts are queued yet.</p>
+            </section>
           </section>
         </div>
       </article>
@@ -332,30 +237,3 @@ export function renderHomePage({ backupConfigured, sentHistory, user }: HomePage
 }
 
 export { HOME_PAGE_SCRIPT };
-
-function buildHistoryFilterClass(isActive: boolean): string {
-  const base =
-    "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/20";
-  return isActive
-    ? `${base} border-app-accent bg-app-accent/10 text-app-accent-strong`
-    : `${base} border-app-line bg-app-canvas/50 text-app-text hover:bg-app-canvas`;
-}
-
-function channelLabel(channel: QueueChannel): string {
-  if (channel === "linkedin") return "LinkedIn";
-  if (channel === "x") return "X";
-  return "Bluesky";
-}
-
-function formatHistoryTimestamp(value: string): string {
-  const timestamp = Date.parse(value);
-  if (!Number.isFinite(timestamp)) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "UTC",
-  }).format(new Date(timestamp));
-}
