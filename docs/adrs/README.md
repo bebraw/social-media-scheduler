@@ -31,6 +31,7 @@ Skip an ADR for small, reversible, or purely tactical choices.
 | [ADR-013](./ADR-013-return-to-npm-for-agent-ci-compatibility.md)        | Accepted   | Return to npm because local Agent CI remains unreliable with pnpm warmed dependency mounts.  |
 | [ADR-014](./ADR-014-adopt-d1-auth-and-r2-backup-foundations.md)         | Accepted   | Adopt D1-backed auth and scheduled R2 backups as the scheduler's initial operational base.   |
 | [ADR-015](./ADR-015-constrain-demo-mode-to-local-development.md)        | Accepted   | Keep seeded demo workflows on a dedicated local-only route instead of the normal app pages.  |
+| [ADR-016](./ADR-016-store-posting-schedules-as-cloudflare-cron.md)      | Accepted   | Store per-channel posting schedules in app state as Cloudflare-cron-compatible expressions.  |
 
 ## Creating A New ADR
 

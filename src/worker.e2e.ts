@@ -11,10 +11,22 @@ test("requires login before showing the default queue view", async ({ page }) =>
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { level: 1, name: "Queue" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Queue status" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Posting schedule" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Compose", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Queued posts" })).toBeVisible();
   await expect(page.getByRole("link", { name: "History", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open demo mode" })).toBeVisible();
+
+  await page.getByLabel("LinkedIn Mon").uncheck();
+  await page.getByLabel("LinkedIn Wed").uncheck();
+  await page.getByLabel("LinkedIn Fri").uncheck();
+  await page.getByLabel("LinkedIn Tue").check();
+  await page.getByLabel("LinkedIn Thu").check();
+  await page.getByLabel("LinkedIn UTC time").fill("10:45");
+  await page.getByRole("button", { name: "Save posting schedule" }).click();
+  await expect(page).toHaveURL(/\/\?schedule=updated$/);
+  await expect(page.getByText("Posting schedule saved.")).toBeVisible();
+  await expect(page.locator('[data-posting-cron="linkedin"]')).toHaveText("45 10 * * TUE,THU");
 
   await page.getByRole("link", { name: "Compose", exact: true }).click();
   await expect(page).toHaveURL(/\/compose$/);
@@ -71,7 +83,7 @@ test("serves the health endpoint", async ({ request }) => {
   await expect(response.json()).resolves.toEqual({
     ok: true,
     name: "social-media-scheduler",
-    routes: ["/", "/compose", "/history", "/login", "/api/health", "/demo"],
+    routes: ["/", "/compose", "/history", "/posting-schedule", "/login", "/api/health", "/demo"],
   });
 });
 

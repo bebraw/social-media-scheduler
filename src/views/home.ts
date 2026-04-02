@@ -1,14 +1,19 @@
+import type { ChannelPostingSchedule } from "../schedule";
 import { renderQueuedPostsSection, renderStatGrid } from "./cards";
 import { renderLinkButton, renderPanel, renderSectionHeader } from "./components";
 import { HOME_PAGE_SCRIPT } from "./home-ui";
 import { renderWorkspacePage, type SessionUser } from "./layout";
+import { renderPostingSchedulePanel } from "./posting-schedule";
 
 interface QueuePageOptions {
   demoAvailable: boolean;
+  postingSchedules: ChannelPostingSchedule[];
+  scheduleError?: string;
+  scheduleSaved?: boolean;
   user: SessionUser;
 }
 
-export function renderQueuePage({ demoAvailable, user }: QueuePageOptions): string {
+export function renderQueuePage({ demoAvailable, postingSchedules, scheduleError, scheduleSaved, user }: QueuePageOptions): string {
   return renderWorkspacePage({
     activePath: "/",
     content: `<div class="grid gap-4 px-5 py-5 sm:px-8 sm:py-8 lg:grid-cols-[0.82fr_1.18fr]">
@@ -25,6 +30,12 @@ export function renderQueuePage({ demoAvailable, user }: QueuePageOptions): stri
             { label: "Connected channels", value: "3" },
           ])}
         `)}
+        ${renderPostingSchedulePanel({
+          canEdit: user.role !== "readonly",
+          error: scheduleError,
+          saved: scheduleSaved,
+          schedules: postingSchedules,
+        })}
         ${
           demoAvailable
             ? renderPanel(`
@@ -42,7 +53,7 @@ export function renderQueuePage({ demoAvailable, user }: QueuePageOptions): stri
       })}
     </div>`,
     demoAvailable,
-    description: "See what is queued, or open Compose to add a post.",
+    description: "See what is queued and adjust channel schedules.",
     title: "Queue",
     user,
   });

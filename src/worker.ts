@@ -15,6 +15,14 @@ import { runAutomatedBackup } from "./backup";
 import { canAccessDemo, getDemoDrafts, getDemoSentHistory, loadDemoQueuedPosts, scheduleDemoPost } from "./demo";
 import { loadSentPostHistory } from "./history";
 import { listAppRoutes } from "./app-routes";
+import { CHANNEL_CONSTRAINTS } from "./queue/constraints";
+import {
+  buildPostingSchedule,
+  getDefaultPostingSchedules,
+  loadPostingSchedules,
+  PostingScheduleValidationError,
+  savePostingSchedules,
+} from "./schedule";
 import { renderComposePage } from "./views/compose";
 import { renderDemoPage } from "./views/demo";
 import { renderHistoryPage } from "./views/history";
@@ -138,12 +146,53 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
   }
 
   if (url.pathname === "/") {
+    const postingSchedules = env.DB ? await loadPostingSchedules(env.DB) : getDefaultPostingSchedules();
+
     return htmlResponse(
       renderQueuePage({
         demoAvailable: canAccessDemo(request, env),
+        postingSchedules,
+        scheduleSaved: url.searchParams.get("schedule") === "updated",
         user: sessionUser,
       }),
     );
+  }
+
+  if (url.pathname === "/posting-schedule" && request.method === "POST") {
+    if (!env.DB) {
+      return new Response("D1 binding is missing.", { status: 500 });
+    }
+    if (isReadonlyUser(sessionUser)) {
+      return new Response("Readonly users cannot change posting schedules.", { status: 403 });
+    }
+
+    const formData = await request.formData();
+
+    try {
+      const schedules = CHANNEL_CONSTRAINTS.map((constraint) =>
+        buildPostingSchedule({
+          channel: constraint.id,
+          time: String(formData.get(`${constraint.id}-time`) || ""),
+          weekdays: formData.getAll(`${constraint.id}-weekday`).map((value) => String(value)),
+        }),
+      );
+
+      await savePostingSchedules(env.DB, schedules);
+      return redirectResponse("/?schedule=updated");
+    } catch (error) {
+      const message = error instanceof PostingScheduleValidationError ? error.message : "Unable to save the posting schedule.";
+      const postingSchedules = await loadPostingSchedules(env.DB);
+
+      return htmlResponse(
+        renderQueuePage({
+          demoAvailable: canAccessDemo(request, env),
+          postingSchedules,
+          scheduleError: message,
+          user: sessionUser,
+        }),
+        error instanceof PostingScheduleValidationError ? 400 : 500,
+      );
+    }
   }
 
   if (url.pathname === "/compose") {

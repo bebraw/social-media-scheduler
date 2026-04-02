@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import worker, { handleRequest } from "./worker";
 import { createTestDatabase, createTestEnv, createTestR2Bucket, ensureGeneratedStylesheet, seedAuthUser } from "./test-support";
 import { createSessionToken, SESSION_COOKIE, SESSION_TTL_SECONDS } from "./auth";
+import { loadPostingSchedules } from "./schedule";
 
 ensureGeneratedStylesheet();
 
@@ -140,9 +141,118 @@ describe("worker", () => {
     expect(body).toContain(">Compose<");
     expect(body).not.toContain("Open composer");
     expect(body).toContain(">History<");
+    expect(body).toContain("Posting schedule");
+    expect(body).toContain("0 9 * * MON,WED,FRI");
     expect(body).not.toContain("View sent history");
     expect(body).not.toContain("Channel drafts");
     expect(body).not.toContain("Open demo mode");
+  });
+
+  it("allows editors to update per-channel posting schedules", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+
+    const response = await handleRequest(
+      new Request("http://example.com/posting-schedule", {
+        method: "POST",
+        headers: {
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+        body: new URLSearchParams([
+          ["linkedin-time", "10:45"],
+          ["linkedin-weekday", "TUE"],
+          ["x-time", "16:30"],
+          ["x-weekday", "MON"],
+          ["x-weekday", "WED"],
+          ["bluesky-time", "11:15"],
+          ["bluesky-weekday", "SAT"],
+        ]),
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/?schedule=updated");
+    await expect(loadPostingSchedules(db)).resolves.toMatchObject([
+      { channel: "linkedin", cron: "45 10 * * TUE" },
+      { channel: "x", cron: "30 16 * * MON,WED" },
+      { channel: "bluesky", cron: "15 11 * * SAT" },
+    ]);
+  });
+
+  it("rejects posting schedule updates from readonly users", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Readonly User",
+      password: "test-password-123",
+      role: "readonly",
+    });
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Readonly User",
+      role: "readonly",
+    });
+
+    const response = await handleRequest(
+      new Request("http://example.com/posting-schedule", {
+        method: "POST",
+        headers: {
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+        body: new URLSearchParams([
+          ["linkedin-time", "10:45"],
+          ["linkedin-weekday", "TUE"],
+          ["x-time", "16:30"],
+          ["x-weekday", "MON"],
+          ["bluesky-time", "11:15"],
+          ["bluesky-weekday", "SAT"],
+        ]),
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.text()).resolves.toContain("Readonly users cannot change posting schedules.");
+  });
+
+  it("returns a validation error when a posting schedule is incomplete", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+
+    const response = await handleRequest(
+      new Request("http://example.com/posting-schedule", {
+        method: "POST",
+        headers: {
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+        body: new URLSearchParams([
+          ["linkedin-time", "10:45"],
+          ["x-time", "16:30"],
+          ["x-weekday", "MON"],
+          ["bluesky-time", "11:15"],
+          ["bluesky-weekday", "SAT"],
+        ]),
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.text()).resolves.toContain("Choose at least one posting day for LinkedIn.");
   });
 
   it("renders the authenticated compose page", async () => {
@@ -302,7 +412,7 @@ describe("worker", () => {
     await expect(response.json()).resolves.toEqual({
       ok: true,
       name: "social-media-scheduler",
-      routes: ["/", "/compose", "/history", "/login", "/api/health"],
+      routes: ["/", "/compose", "/history", "/posting-schedule", "/login", "/api/health"],
     });
   });
 
@@ -312,7 +422,7 @@ describe("worker", () => {
     await expect(response.json()).resolves.toEqual({
       ok: true,
       name: "social-media-scheduler",
-      routes: ["/", "/compose", "/history", "/login", "/api/health", "/demo"],
+      routes: ["/", "/compose", "/history", "/posting-schedule", "/login", "/api/health", "/demo"],
     });
   });
 

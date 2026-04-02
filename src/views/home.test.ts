@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { getDefaultPostingSchedules } from "../schedule";
 import { renderQueuePage } from "./home";
 
 describe("renderQueuePage", () => {
   it("renders the default queue view without the composer", () => {
     const html = renderQueuePage({
       demoAvailable: false,
+      postingSchedules: getDefaultPostingSchedules(),
       user: {
         name: "Scheduler Admin",
         role: "editor",
@@ -16,6 +18,9 @@ describe("renderQueuePage", () => {
     expect(html).toContain("Queued posts");
     expect(html).toContain(">Compose<");
     expect(html).toContain(">History<");
+    expect(html).toContain("Posting schedule");
+    expect(html).toContain('action="/posting-schedule"');
+    expect(html).toContain("0 9 * * MON,WED,FRI");
     expect(html).not.toContain("Channel drafts");
     expect(html).not.toContain("data-channel-tab");
     expect(html).not.toContain("data-channel-column");
@@ -33,6 +38,7 @@ describe("renderQueuePage", () => {
   it("shows the demo card when demo mode is available", () => {
     const html = renderQueuePage({
       demoAvailable: true,
+      postingSchedules: getDefaultPostingSchedules(),
       user: {
         name: "Scheduler Admin",
         role: "editor",
@@ -40,5 +46,19 @@ describe("renderQueuePage", () => {
     });
 
     expect(html).toContain("Open demo mode");
+  });
+
+  it("shows the readonly schedule note for readonly users", () => {
+    const html = renderQueuePage({
+      demoAvailable: false,
+      postingSchedules: getDefaultPostingSchedules(),
+      user: {
+        name: "Readonly User",
+        role: "readonly",
+      },
+    });
+
+    expect(html).toContain("Readonly users cannot change posting schedules.");
+    expect(html).not.toContain("Save posting schedule");
   });
 });
