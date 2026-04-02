@@ -1,12 +1,11 @@
 import type { SentPostHistoryEntry } from "../history";
-import { renderStatGrid } from "./cards";
-import { renderLinkButton, renderPanel } from "./components";
+import { renderPanel } from "./components";
 import { HOME_PAGE_SCRIPT } from "./home-ui";
 import { renderHistoryCards, renderHistoryFilters } from "./history-components";
 import { renderWorkspacePage, type SessionUser } from "./layout";
 
-const pageTitle = "Sent History";
-const pageDescription = "Inspect previously sent posts per channel in a dedicated workspace.";
+const pageTitle = "History";
+const pageDescription = "Review previously sent posts by channel.";
 
 interface HistoryPageOptions {
   demoAvailable: boolean;
@@ -17,32 +16,16 @@ interface HistoryPageOptions {
 export function renderHistoryPage({ demoAvailable, sentHistory, user }: HistoryPageOptions): string {
   return renderWorkspacePage({
     activePath: "/history",
-    content: `<div class="grid gap-4 px-5 py-5 sm:px-8 sm:py-8 lg:grid-cols-[0.8fr_1.2fr]">
-      <section class="grid gap-4">
-        ${renderPanel(`
-          <h2 class="text-lg font-semibold tracking-[-0.02em]">Filters</h2>
-          <p class="mt-3 text-sm leading-6 text-app-text-soft">Filter by channel to inspect recent tone, cadence, and output patterns without leaving the scheduler.</p>
-        `)}
-        ${renderPanel(`
-          <h2 class="text-lg font-semibold tracking-[-0.02em]">Coverage</h2>
-          ${renderStatGrid([
-            { label: "Tracked posts", value: String(sentHistory.length), valueAttributes: "data-history-count" },
-            { label: "Channels", value: "3" },
-            {
-              content: `<p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Queue</p>${renderLinkButton({ className: "mt-2", href: "/", label: "Return to queue", variant: "inline" })}`,
-            },
-          ])}
-        `)}
-      </section>
+    content: `<div class="grid gap-4 px-5 py-5 sm:px-8 sm:py-8">
       ${renderPanel(`
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 class="text-lg font-semibold tracking-[-0.02em]">Channel history</h2>
-            <p class="mt-1 max-w-2xl text-sm leading-6 text-app-text-soft">Review sent posts by channel to compare tone, cadence, and recent output.</p>
+            <p class="mt-1 max-w-2xl text-sm leading-6 text-app-text-soft">Filter sent posts by channel.</p>
           </div>
-          <p class="text-sm font-medium text-app-text-soft">Inspect by channel</p>
+          <p class="text-sm font-medium text-app-text-soft"><span data-history-count>${sentHistory.length}</span> posts shown</p>
         </div>
-        <div class="mt-5 flex flex-wrap gap-2" aria-label="Sent history filters">
+        <div class="mt-5 flex flex-wrap gap-2" aria-label="History filters">
           ${renderHistoryFilters(sentHistory)}
         </div>
         <div class="mt-5 grid gap-3" data-sent-history-list>${renderHistoryCards(sentHistory)}</div>

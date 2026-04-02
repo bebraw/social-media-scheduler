@@ -129,7 +129,6 @@ describe("worker", () => {
       }),
       createTestEnv({
         DB: db,
-        BACKUP_BUCKET: createTestR2Bucket(),
       }),
     );
 
@@ -138,8 +137,10 @@ describe("worker", () => {
     expect(body).toContain("Queue");
     expect(body).toContain("Session");
     expect(body).toContain("Scheduler Admin");
-    expect(body).toContain("Open composer");
-    expect(body).toContain("View sent history");
+    expect(body).toContain(">Compose<");
+    expect(body).not.toContain("Open composer");
+    expect(body).toContain(">History<");
+    expect(body).not.toContain("View sent history");
     expect(body).not.toContain("Channel drafts");
     expect(body).not.toContain("Open demo mode");
   });
@@ -195,7 +196,7 @@ describe("worker", () => {
 
     expect(response.status).toBe(200);
     const body = await response.text();
-    expect(body).toContain("Sent History");
+    expect(body).toContain("History");
     expect(body).toContain("data-history-filter");
     expect(body).toContain("No sent posts are available yet.");
   });

@@ -140,7 +140,6 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
   if (url.pathname === "/") {
     return htmlResponse(
       renderQueuePage({
-        backupConfigured: Boolean(env.BACKUP_BUCKET),
         demoAvailable: canAccessDemo(request, env),
         user: sessionUser,
       }),

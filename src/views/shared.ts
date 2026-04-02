@@ -48,7 +48,7 @@ export function renderWorkspaceNav(options: { activePath: "/" | "/compose" | "/h
   const links: Array<{ href: "/" | "/compose" | "/history" | "/demo"; label: string }> = [
     { href: "/", label: "Queue" },
     { href: "/compose", label: "Compose" },
-    { href: "/history", label: "Sent history" },
+    { href: "/history", label: "History" },
   ];
   if (options.demoAvailable) {
     links.push({ href: "/demo", label: "Demo mode" });

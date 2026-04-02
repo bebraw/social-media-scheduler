@@ -36,7 +36,7 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 - [ ] Authenticated requests to `/` return the default queue page after login without seeded demo data.
 - [ ] Authenticated requests to `/compose` return a dedicated composer page with separate LinkedIn, X, and Bluesky drafts exposed through a tabbed editor without seeded demo data.
 - [ ] The dedicated composer applies channel-specific copy budgets and lightweight client-side queue interactions.
-- [ ] Authenticated requests to `/history` return a dedicated sent-history page that can filter previously sent posts by channel and render an empty state when no real history exists.
+- [ ] Authenticated requests to `/history` return a dedicated history page that can filter previously sent posts by channel and render an empty state when no real history exists.
 - [ ] Authenticated requests to `/demo` return a seeded demo workspace only when `DEMO_MODE=true` is configured locally and the request stays on a loopback host.
 - [ ] `POST /demo/queue` stores scheduled demo posts in local D1-backed app state without calling any external publishing service.
 - [ ] The health route returns stable JSON for smoke tests and tooling.
@@ -52,7 +52,7 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 - `GET /styles.css` must keep returning the generated stylesheet.
 - `GET /api/health` must keep returning HTTP 200 JSON with `ok: true`.
 - The dedicated composer must keep exactly one channel panel visible at a time while preserving channel-specific limits and queue controls.
-- The sent-history page must keep filtering cards on the client without a full page reload.
+- The history page must keep filtering cards on the client without a full page reload.
 - `/demo` must return HTTP 404 unless demo mode is explicitly enabled for local development and the request stays on a loopback host.
 - Demo scheduling must write only to local demo state and must not call any external publishing adapter or service.
 - Session cookies must stay signed with `SESSION_SECRET` and marked `HttpOnly`.
@@ -90,16 +90,16 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 - When: they navigate to `/compose`
 - Then: they see LinkedIn, X, and Bluesky draft tabs, one visible authoring panel, and local queue preview controls without seeded demo data
 
-**Scenario: Operator opens sent history**
+**Scenario: Operator opens history**
 
 - Given: the operator is already authenticated
 - When: they navigate to `/history`
-- Then: they see a dedicated sent-history page with per-channel filters and either real history entries or an empty state
+- Then: they see a dedicated history page with per-channel filters and either real history entries or an empty state
 
-**Scenario: Operator filters sent history**
+**Scenario: Operator filters history**
 
 - Given: the operator is already authenticated and already on `/history`
-- When: they use the sent-history channel filters
+- When: they use the history channel filters
 - Then: the page narrows the visible sent-post cards to the selected channel without a full reload
 
 **Scenario: Operator switches draft channels**

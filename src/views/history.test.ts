@@ -3,7 +3,7 @@ import type { SentPostHistoryEntry } from "../history";
 import { renderHistoryPage } from "./history";
 
 describe("renderHistoryPage", () => {
-  it("renders the sent history page with filter controls", () => {
+  it("renders the history page with filter controls", () => {
     const sentHistory: SentPostHistoryEntry[] = [
       {
         id: "one",
@@ -23,7 +23,7 @@ describe("renderHistoryPage", () => {
       },
     });
 
-    expect(html).toContain("Sent History");
+    expect(html).toContain("History");
     expect(html).toContain("data-history-filter");
     expect(html).toContain("data-history-card");
     expect(html).toContain('href="/"');

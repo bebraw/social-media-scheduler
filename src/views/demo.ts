@@ -1,7 +1,7 @@
 import type { DemoDraft, DemoQueuedPost } from "../demo";
 import type { SentPostHistoryEntry } from "../history";
 import { renderQueuedPostsSection, renderStatGrid } from "./cards";
-import { renderPanel, renderPill, renderSectionHeader } from "./components";
+import { renderPanel, renderSectionHeader } from "./components";
 import { renderDemoDraftPanels, renderDraftTabs, resolveDraftEntries } from "./draft-editor";
 import { HOME_PAGE_SCRIPT } from "./home-ui";
 import { formatChannelLabel, renderHistoryCards, renderHistoryFilters } from "./history-components";
@@ -44,14 +44,13 @@ export function renderDemoPage({ drafts, queuedPosts, sentHistory, user }: DemoP
     activePath: "/demo",
     content: `<div class="grid gap-4 px-5 py-5 sm:px-8 sm:py-8">
       <section class="rounded-xl border border-app-line bg-amber-50 p-6">
-        <h2 class="text-lg font-semibold tracking-[-0.02em] text-amber-950">Development-only sandbox</h2>
+        <h2 class="text-lg font-semibold tracking-[-0.02em] text-amber-950">Demo mode</h2>
         <p class="mt-3 text-sm leading-6 text-amber-900">Demo mode is available only in local development when <code>DEMO_MODE=true</code> is set. Scheduling here updates local demo data only and does not hit any external publishing service.</p>
       </section>
       ${renderPanel(`
         ${renderSectionHeader({
-          description: "Preloaded example drafts for local exploration.",
+          description: "Preloaded example drafts.",
           title: "Demo drafts",
-          trailing: renderPill("Sandbox data"),
         })}
         <div class="mt-5 grid gap-4">
           <div class="grid gap-2 sm:grid-cols-3" role="tablist" aria-label="Demo draft channels">
@@ -81,12 +80,12 @@ export function renderDemoPage({ drafts, queuedPosts, sentHistory, user }: DemoP
       ${renderPanel(`
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 class="text-lg font-semibold tracking-[-0.02em]">Demo sent history</h2>
+            <h2 class="text-lg font-semibold tracking-[-0.02em]">Demo history</h2>
             <p class="mt-1 max-w-2xl text-sm leading-6 text-app-text-soft">Example history for local review flows and UI testing.</p>
           </div>
           <p class="text-sm font-medium text-app-text-soft"><span data-history-count>${escapeHtml(String(sentHistory.length))}</span> posts shown</p>
         </div>
-        <div class="mt-5 flex flex-wrap gap-2" aria-label="Sent history filters">
+        <div class="mt-5 flex flex-wrap gap-2" aria-label="History filters">
           ${renderHistoryFilters(sentHistory)}
         </div>
         <div class="mt-5 grid gap-3" data-sent-history-list>${renderHistoryCards(sentHistory)}</div>
@@ -94,7 +93,7 @@ export function renderDemoPage({ drafts, queuedPosts, sentHistory, user }: DemoP
       `)}
     </div>`,
     demoAvailable: true,
-    description: "Development-only sandbox with seeded data for walkthroughs, experiments, and safe scheduling practice.",
+    description: "Local seeded data for walkthroughs and safe scheduling practice.",
     title: "Demo Mode",
     user,
   });

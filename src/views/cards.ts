@@ -9,7 +9,7 @@ interface StatCard {
 }
 
 interface QueuedPostsSectionOptions {
-  badge: string;
+  badge?: string;
   description: string;
   emptyText?: string;
   postsMarkup?: string;
@@ -24,13 +24,14 @@ export function renderStatGrid(cards: StatCard[]): string {
 
 export function renderQueuedPostsSection({ badge, description, emptyText, postsMarkup = "", title }: QueuedPostsSectionOptions): string {
   const hasPosts = postsMarkup.trim().length > 0;
+  const trailing = badge ? `<span class="text-sm font-medium text-app-text-soft">${escapeHtml(badge)}</span>` : undefined;
 
   return renderPanel(`
     ${renderSectionHeader({
       className: "items-start",
       description,
       title,
-      trailing: `<span class="text-sm font-medium text-app-text-soft">${escapeHtml(badge)}</span>`,
+      trailing,
     })}
     <div class="mt-5 grid gap-3" data-queued-posts>${postsMarkup}</div>
     ${

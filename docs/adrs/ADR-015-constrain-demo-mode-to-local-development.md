@@ -8,7 +8,7 @@
 
 The scheduler UI still benefits from seeded example data during local development because the real posting workflow is not yet connected to external publishing adapters.
 
-Leaving seeded drafts, queue entries, and sent-history examples on the normal authenticated routes would blur the line between real app state and demonstration state. It would also make future adapter work harder to reason about because the production-facing pages would keep carrying development-only assumptions.
+Leaving seeded drafts, queue entries, and history examples on the normal authenticated routes would blur the line between real app state and demonstration state. It would also make future adapter work harder to reason about because the production-facing pages would keep carrying development-only assumptions.
 
 At the same time, developers still need a safe place to exercise scheduling flows without calling any real service.
 

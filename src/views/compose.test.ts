@@ -3,7 +3,7 @@ import { CHANNEL_CONSTRAINTS } from "../queue/constraints";
 import { renderComposePage } from "./compose";
 
 describe("renderComposePage", () => {
-  it("renders the dedicated composer with channel tabs and local queue controls", () => {
+  it("renders the compose page with channel tabs and local queue controls", () => {
     const html = renderComposePage({
       demoAvailable: false,
       user: {
@@ -27,6 +27,8 @@ describe("renderComposePage", () => {
     expect(html).toContain("hidden");
     expect(html).toContain("data-queue-button");
     expect(html).toContain("Queued posts");
+    expect(html).not.toContain("Dedicated composer");
+    expect(html).not.toContain("Composer flow");
     expect(html).toContain('src="/home.js"');
     expect(html).not.toContain("Open demo mode");
   });

@@ -47,7 +47,7 @@ Local development in this repo targets macOS. Other platforms may need script an
 - `GET /login` serves the local sign-in page.
 - `GET /` redirects anonymous users to login and serves the authenticated queue view for signed-in users.
 - `GET /compose` serves the authenticated post composer for signed-in users.
-- `GET /history` serves the authenticated sent-history page with per-channel inspection filters for signed-in users.
+- `GET /history` serves the authenticated history page with per-channel inspection filters for signed-in users.
 - `GET /demo` serves the development-only demo workspace when `DEMO_MODE=true` is set locally and the request stays on a loopback host.
 - `GET /styles.css` serves the generated Tailwind stylesheet.
 - `GET /api/health` serves a JSON health response for smoke tests and tooling.

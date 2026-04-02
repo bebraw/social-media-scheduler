@@ -12,11 +12,9 @@ test("requires login before showing the default queue view", async ({ page }) =>
   await expect(page.getByRole("heading", { level: 1, name: "Queue" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Queue status" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Compose", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open composer" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Queued posts" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "View sent history" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "History", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open demo mode" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "/api/health" })).toBeVisible();
 
   await page.getByRole("link", { name: "Compose", exact: true }).click();
   await expect(page).toHaveURL(/\/compose$/);
@@ -43,9 +41,9 @@ test("requires login before showing the default queue view", async ({ page }) =>
   await expect(page.locator("[data-metric-queued]")).toHaveText("1");
   await expect(page.locator("[data-queued-posts] article").first()).toContainText("Queue this X draft for the afternoon slot.");
 
-  await page.getByRole("link", { name: "Sent history", exact: true }).click();
+  await page.getByRole("link", { name: "History", exact: true }).click();
   await expect(page).toHaveURL(/\/history$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Sent History" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "History" })).toBeVisible();
   await expect(page.getByText("No sent posts are available yet.")).toBeVisible();
 
   await page.getByRole("link", { name: "Demo mode" }).click();

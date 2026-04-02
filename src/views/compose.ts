@@ -1,5 +1,5 @@
 import { renderQueuedPostsSection, renderStatGrid } from "./cards";
-import { renderLinkButton, renderPanel, renderPill, renderSectionHeader } from "./components";
+import { renderLinkButton, renderPanel, renderSectionHeader } from "./components";
 import { getDefaultComposerDrafts, renderComposeDraftPanels, renderDraftTabs, resolveDraftEntries } from "./draft-editor";
 import { HOME_PAGE_SCRIPT } from "./home-ui";
 import { renderWorkspacePage, type SessionUser } from "./layout";
@@ -17,9 +17,8 @@ export function renderComposePage({ demoAvailable, user }: ComposePageOptions): 
     content: `<div class="grid gap-4 px-5 py-5 sm:px-8 sm:py-8">
       ${renderPanel(`
         ${renderSectionHeader({
-          description: "Keep the active writing surface focused on one channel at a time while you shape the next post.",
+          description: "Draft one channel at a time.",
           title: "Channel drafts",
-          trailing: renderPill("Dedicated composer"),
         })}
         <div class="mt-5 grid gap-4">
           <div class="grid gap-2 sm:grid-cols-3" role="tablist" aria-label="Draft channels">
@@ -40,13 +39,8 @@ export function renderComposePage({ demoAvailable, user }: ComposePageOptions): 
               },
             ])}
           `)}
-          ${renderPanel(`
-            <h2 class="text-lg font-semibold tracking-[-0.02em]">Composer flow</h2>
-            <p class="mt-3 text-sm leading-6 text-app-text-soft">Draft here first, preview the local queue entry, then return to the Queue page to review the broader publishing surface.</p>
-          `)}
         </section>
         ${renderQueuedPostsSection({
-          badge: "Draft session",
           description: "Posts queued locally from this compose session.",
           emptyText: "No posts are queued yet.",
           title: "Queued posts",
@@ -54,8 +48,7 @@ export function renderComposePage({ demoAvailable, user }: ComposePageOptions): 
       </section>
     </div>`,
     demoAvailable,
-    description:
-      "Use the dedicated composer for channel-specific drafting, attachments, and local queue prep without crowding the queue view.",
+    description: "Draft posts, attach media, and preview the local queue.",
     title: "Compose",
     user,
   });

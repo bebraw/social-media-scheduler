@@ -17,7 +17,8 @@ describe("renderDemoPage", () => {
     });
 
     expect(html).toContain("Demo Mode");
-    expect(html).toContain("Development-only sandbox");
+    expect(html).toContain("Demo mode");
+    expect(html).not.toContain("Development-only sandbox");
     expect(html).toContain('action="/demo/queue"');
     expect(html).toContain("Schedule demo post");
     expect(html).toContain("data-history-filter");
