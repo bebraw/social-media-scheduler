@@ -96,7 +96,8 @@ This was rejected because it would couple UI and request handling to provider-sp
 
 - `linkedin-api-client` is the best available library candidate from this research pass because it hides Rest.li request construction and exposes auth helpers.
 - It should be isolated behind the narrowest adapter boundary of the three providers.
-- Implementation work should verify Cloudflare Worker compatibility before treating it as a settled runtime dependency.
+- The implemented connection flow now validates the submitted member access token via `/me` and stores a normalized member identifier derived from the authenticated profile.
+- This remains the riskiest provider dependency because the package is beta and documented for Node.js server applications, so runtime compatibility should stay under scrutiny.
 
 ## Testing Notes
 

@@ -1,11 +1,23 @@
-import { describe, expect, it } from "vitest";
+import { RestliClient } from "linkedin-api-client";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTestDatabase, createTestEnv } from "../test-support";
 import { loadEncryptedSecret } from "../secrets";
 import { buildAccessTokenSecretKey, buildRefreshTokenSecretKey, createChannelConnection, loadChannelConnections } from "./index";
 
 describe("channel connections", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("creates a channel connection and encrypts its credentials", async () => {
     const db = createTestDatabase();
+    vi.spyOn(RestliClient.prototype, "get").mockResolvedValue({
+      data: {
+        id: "abc123",
+        localizedFirstName: "Example",
+        localizedLastName: "Member",
+      },
+    } as unknown as Awaited<ReturnType<RestliClient["get"]>>);
 
     const connection = await createChannelConnection(
       db,
@@ -21,6 +33,7 @@ describe("channel connections", () => {
       },
     );
 
+    expect(connection.accountHandle).toBe("Example Member (abc123)");
     await expect(loadChannelConnections(db)).resolves.toEqual([connection]);
     await expect(loadEncryptedSecret(db, buildAccessTokenSecretKey(connection.id), "dedicated-secret")).resolves.toBe("access-token-value");
     await expect(loadEncryptedSecret(db, buildRefreshTokenSecretKey(connection.id), "dedicated-secret")).resolves.toBe(
@@ -33,6 +46,13 @@ describe("channel connections", () => {
     const env = createTestEnv({
       APP_ENCRYPTION_SECRET: "dedicated-secret",
     });
+    vi.spyOn(RestliClient.prototype, "get").mockResolvedValue({
+      data: {
+        id: "abc123",
+        localizedFirstName: "Example",
+        localizedLastName: "Member",
+      },
+    } as unknown as Awaited<ReturnType<RestliClient["get"]>>);
 
     await createChannelConnection(db, env, {
       channel: "linkedin",

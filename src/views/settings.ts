@@ -46,7 +46,7 @@ export function renderSettingsPage({ canEdit, connections, demoAvailable, draft,
       ${renderPanel(`
         ${renderSectionHeader({
           description:
-            "Tokens are encrypted before they are written to D1. For Bluesky, enter a handle and app password; for X, use a user-context access token tied to the account you want to save.",
+            "Tokens are encrypted before they are written to D1. For Bluesky, enter a handle and app password; for X, use a user-context access token; for LinkedIn, use a member access token tied to the profile you want to save.",
           title: canEdit ? "Add connection" : "Connection access",
         })}
         ${
@@ -112,7 +112,7 @@ function renderConnectionForm(draft: ChannelConnectionDraft): string {
       <span class="text-xs leading-5 text-app-text-soft">Optional. Save it when the provider issues renewable credentials. Leave it blank for Bluesky app-password sign-in.</span>
     </label>
     <div class="flex flex-col gap-3 border-t border-app-line pt-4">
-      <p class="text-sm leading-6 text-app-text-soft">Each saved credential is encrypted in the app_secrets store; the settings page only keeps non-sensitive account metadata readable. Bluesky app passwords are exchanged for session tokens and are not stored directly, and X connections normalize the saved handle from the validated token.</p>
+      <p class="text-sm leading-6 text-app-text-soft">Each saved credential is encrypted in the app_secrets store; the settings page only keeps non-sensitive account metadata readable. Bluesky app passwords are exchanged for session tokens and are not stored directly, X connections normalize the saved handle from the validated token, and LinkedIn connections save a normalized member identifier from the validated profile.</p>
       ${renderButton({ label: "Save channel connection", type: "submit", variant: "primary" })}
     </div>
   </form>`;

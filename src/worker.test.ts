@@ -1,3 +1,4 @@
+import { RestliClient } from "linkedin-api-client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadEncryptedSecret } from "./secrets";
 import worker, { handleRequest } from "./worker";
@@ -7,6 +8,16 @@ import { createChannelConnection } from "./channels";
 import { loadPostingSchedules } from "./schedule";
 
 ensureGeneratedStylesheet();
+
+function mockLinkedInProfileLookup(): void {
+  vi.spyOn(RestliClient.prototype, "get").mockResolvedValue({
+    data: {
+      id: "abc123",
+      localizedFirstName: "Example",
+      localizedLastName: "Member",
+    },
+  } as unknown as Awaited<ReturnType<RestliClient["get"]>>);
+}
 
 describe("worker", () => {
   afterEach(() => {
@@ -158,6 +169,7 @@ describe("worker", () => {
 
   it("renders only configured provider schedules on the queue page", async () => {
     const db = createTestDatabase();
+    mockLinkedInProfileLookup();
     await seedAuthUser(db, {
       name: "Scheduler Admin",
       password: "test-password-123",
@@ -201,6 +213,7 @@ describe("worker", () => {
 
   it("allows editors to update per-channel posting schedules", async () => {
     const db = createTestDatabase();
+    mockLinkedInProfileLookup();
     await seedAuthUser(db, {
       name: "Scheduler Admin",
       password: "test-password-123",
@@ -315,6 +328,7 @@ describe("worker", () => {
 
   it("returns a validation error when a posting schedule is incomplete", async () => {
     const db = createTestDatabase();
+    mockLinkedInProfileLookup();
     await seedAuthUser(db, {
       name: "Scheduler Admin",
       password: "test-password-123",
@@ -358,6 +372,7 @@ describe("worker", () => {
 
   it("renders the authenticated settings page", async () => {
     const db = createTestDatabase();
+    mockLinkedInProfileLookup();
     await seedAuthUser(db, {
       name: "Scheduler Admin",
       password: "test-password-123",
@@ -409,6 +424,7 @@ describe("worker", () => {
       APP_ENCRYPTION_SECRET: "dedicated-secret",
       DB: db,
     });
+    mockLinkedInProfileLookup();
 
     const response = await handleRequest(
       new Request("http://example.com/settings/channels", {
@@ -633,6 +649,7 @@ describe("worker", () => {
 
   it("renders the authenticated compose page", async () => {
     const db = createTestDatabase();
+    mockLinkedInProfileLookup();
     await seedAuthUser(db, {
       name: "Scheduler Admin",
       password: "test-password-123",
@@ -675,6 +692,7 @@ describe("worker", () => {
 
   it("renders the authenticated history page", async () => {
     const db = createTestDatabase();
+    mockLinkedInProfileLookup();
     await seedAuthUser(db, {
       name: "Scheduler Admin",
       password: "test-password-123",

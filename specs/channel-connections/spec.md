@@ -34,6 +34,8 @@ Operators may need multiple accounts on the same provider, such as more than one
 - [ ] Bluesky connections store returned session tokens instead of persisting the submitted app password.
 - [ ] X connections validate the submitted user-context access token before the connection is saved.
 - [ ] X connections normalize the stored account handle from the authenticated X username.
+- [ ] LinkedIn connections validate the submitted member access token before the connection is saved.
+- [ ] LinkedIn connections normalize the stored account identifier from the authenticated LinkedIn member profile.
 - [ ] Token-like values are encrypted before they are written to D1.
 - [ ] Readonly users can inspect settings but cannot change them.
 - [ ] Backup exports include channel connection metadata plus encrypted secret blobs.
@@ -47,13 +49,14 @@ Operators may need multiple accounts on the same provider, such as more than one
 - Duplicate connections for the same provider and account handle must be rejected.
 - Bluesky must not store the submitted app password after exchanging it for session tokens.
 - X must not trust a manually entered handle when the validated token resolves to a different authenticated username.
+- LinkedIn must not trust a manually entered profile label when the validated token resolves to a different authenticated member profile.
 - Encryption must remain reversible only with the configured app-level encryption secret.
 - The settings page must never render stored secret values back into the UI.
 - Backups may include encrypted credentials, but never the encryption secret itself.
 
 ### Verification
 
-- **Automated tests:** `src/providers/bluesky.test.ts`, `src/channels/index.test.ts`, `src/secrets/index.test.ts`, `src/views/settings.test.ts`, `src/worker.test.ts`, `src/worker.e2e.ts`, and `src/backup/index.test.ts`
+- **Automated tests:** `src/providers/bluesky.test.ts`, `src/providers/x.test.ts`, `src/providers/linkedin.test.ts`, `src/channels/index.test.ts`, `src/secrets/index.test.ts`, `src/views/settings.test.ts`, `src/worker.test.ts`, `src/worker.e2e.ts`, and `src/backup/index.test.ts`
 - **Quality gate:** `npm run quality:gate`
 
 ### Scenarios
@@ -81,6 +84,12 @@ Operators may need multiple accounts on the same provider, such as more than one
 - Given: the operator is already authenticated
 - When: they submit `POST /settings/channels` with an X user-context access token
 - Then: the app validates the token against the authenticated X account, stores the normalized `@username` in `channel_connections`, and encrypts the submitted token values
+
+**Scenario: Operator adds a LinkedIn connection with a member token**
+
+- Given: the operator is already authenticated
+- When: they submit `POST /settings/channels` with a LinkedIn member access token
+- Then: the app validates the token against the authenticated member profile, stores a normalized member identifier in `channel_connections`, and encrypts the submitted token values
 
 **Scenario: Readonly user attempts to add a connection**
 

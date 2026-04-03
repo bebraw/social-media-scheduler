@@ -5,7 +5,7 @@ This repo is the foundation for a private social media scheduler for personal pr
 - D1-backed local auth with signed session cookies
 - Optional scheduled R2 backups for application state snapshots
 - A settings surface for multi-account channel connections with encrypted credentials at rest
-- First provider adapter slices for validated Bluesky and X connections
+- First provider adapter slices for validated Bluesky, X, and LinkedIn connections
 
 Local development in this repo targets macOS. Other platforms may need script and tooling adjustments before the baseline workflow works as documented.
 
@@ -55,6 +55,7 @@ Local development in this repo targets macOS. Other platforms may need script an
 - `POST /settings/channels` stores a new channel connection and encrypts its token fields in D1-backed secret storage.
 - Bluesky connections use a handle plus app password at save time; the app validates that login and stores the returned session tokens instead of the raw password.
 - X connections validate the submitted user-context access token and normalize the saved handle from the authenticated account before storing encrypted tokens.
+- LinkedIn connections validate the submitted member access token and normalize the saved account identifier from the authenticated member profile before storing encrypted tokens.
 - `POST /posting-schedule` updates the authenticated per-channel posting schedule and stores the resulting Cloudflare cron expressions in D1 app state.
 - `GET /demo` serves the development-only demo workspace when `DEMO_MODE=true` is set locally and the request stays on a loopback host.
 - `GET /styles.css` serves the generated Tailwind stylesheet.
@@ -67,7 +68,7 @@ Local development in this repo targets macOS. Other platforms may need script an
 - `src/auth/` holds password hashing, session, and D1-backed auth state helpers.
 - `src/backup/` holds the scheduled backup export and R2 storage helpers.
 - `src/channels/` holds per-account channel connection persistence and validation.
-- `src/providers/` holds provider-specific adapter logic such as Bluesky and X connection preparation.
+- `src/providers/` holds provider-specific adapter logic such as Bluesky, X, and LinkedIn connection preparation.
 - `src/demo/` holds development-only demo gating, seeded data, and local demo scheduling helpers.
 - `src/history/` holds sent-post history loading for the normal authenticated routes.
 - `src/queue/` holds channel constraint logic for the dedicated composer and related queue behavior.

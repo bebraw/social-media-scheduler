@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { RestliClient } from "linkedin-api-client";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { saveEncryptedSecret } from "../secrets";
 import { runAutomatedBackup } from "./index";
 import { createTestDatabase, createTestR2Bucket, seedAuthUser, seedStateEntry } from "../test-support";
@@ -6,12 +7,23 @@ import { createChannelConnection } from "../channels";
 import { createTestEnv } from "../test-support";
 
 describe("runAutomatedBackup", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("writes a new backup when the exported content changes", async () => {
     const db = createTestDatabase();
     const bucket = createTestR2Bucket();
     const env = createTestEnv({
       APP_ENCRYPTION_SECRET: "dedicated-secret",
     });
+    vi.spyOn(RestliClient.prototype, "get").mockResolvedValue({
+      data: {
+        id: "abc123",
+        localizedFirstName: "Example",
+        localizedLastName: "Member",
+      },
+    } as unknown as Awaited<ReturnType<RestliClient["get"]>>);
 
     await seedAuthUser(db, {
       name: "Scheduler Admin",

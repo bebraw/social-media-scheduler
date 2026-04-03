@@ -31,6 +31,7 @@ describe("renderSettingsPage", () => {
     expect(html).toContain("Tokens are encrypted before they are written to D1.");
     expect(html).toContain("For Bluesky, enter a handle and app password");
     expect(html).toContain("for X, use a user-context access token");
+    expect(html).toContain("for LinkedIn, use a member access token");
     expect(html).toContain("Save channel connection");
   });
 
