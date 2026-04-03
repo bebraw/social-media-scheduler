@@ -45,7 +45,8 @@ export function renderSettingsPage({ canEdit, connections, demoAvailable, draft,
       `)}
       ${renderPanel(`
         ${renderSectionHeader({
-          description: "Tokens are encrypted before they are written to D1. Keep labels specific so you can tell accounts apart later.",
+          description:
+            "Tokens are encrypted before they are written to D1. For Bluesky, enter a handle and app password; the app exchanges them for session tokens before saving.",
           title: canEdit ? "Add connection" : "Connection access",
         })}
         ${
@@ -108,10 +109,10 @@ function renderConnectionForm(draft: ChannelConnectionDraft): string {
     <label class="grid gap-2 text-sm font-medium">
       <span>Refresh token</span>
       <input class="rounded-xl border border-app-line bg-white px-4 py-3 text-sm text-app-text focus:border-app-accent focus:outline-none focus:ring-2 focus:ring-app-accent/10" name="refreshToken" type="password" value="${escapeHtml(draft.refreshToken)}" autocomplete="off">
-      <span class="text-xs leading-5 text-app-text-soft">Optional. Save it when the provider issues renewable credentials.</span>
+      <span class="text-xs leading-5 text-app-text-soft">Optional. Save it when the provider issues renewable credentials. Leave it blank for Bluesky app-password sign-in.</span>
     </label>
     <div class="flex flex-col gap-3 border-t border-app-line pt-4">
-      <p class="text-sm leading-6 text-app-text-soft">Each saved credential is encrypted in the app_secrets store; the settings page only keeps non-sensitive account metadata readable.</p>
+      <p class="text-sm leading-6 text-app-text-soft">Each saved credential is encrypted in the app_secrets store; the settings page only keeps non-sensitive account metadata readable. Bluesky app passwords are exchanged for session tokens and are not stored directly.</p>
       ${renderButton({ label: "Save channel connection", type: "submit", variant: "primary" })}
     </div>
   </form>`;

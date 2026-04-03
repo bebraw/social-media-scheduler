@@ -1,5 +1,6 @@
 import type { Env } from "../app-env";
 import type { D1Database } from "../db-core";
+import { prepareChannelConnectionDraft, ProviderConnectionValidationError, type ProviderAdapterContext } from "../providers";
 import { getChannelConstraint, type QueueChannel } from "../queue/constraints";
 import { deleteEncryptedSecret, resolveAppEncryptionSecret, saveEncryptedSecret } from "../secrets";
 
@@ -74,30 +75,32 @@ export async function createChannelConnection(
   db: D1Database,
   env: Pick<Env, "APP_ENCRYPTION_SECRET" | "SESSION_SECRET">,
   input: ChannelConnectionDraft,
+  context: ProviderAdapterContext = {},
 ): Promise<ChannelConnection> {
   const normalized = normalizeChannelConnectionDraft(input);
+  const prepared = await prepareNormalizedDraft(normalized, context);
   const existingConnection = await db
     .prepare("SELECT id FROM channel_connections WHERE channel = ? AND account_handle = ? COLLATE NOCASE")
-    .bind(normalized.channel, normalized.accountHandle)
+    .bind(prepared.channel, prepared.accountHandle)
     .first<ChannelConnectionLookupRow>();
 
   if (existingConnection?.id) {
     throw new ChannelConnectionValidationError(
-      `${getChannelConstraint(normalized.channel).name} account ${normalized.accountHandle} is already connected.`,
+      `${getChannelConstraint(prepared.channel).name} account ${prepared.accountHandle} is already connected.`,
     );
   }
 
   const connectionId = crypto.randomUUID();
   const accessTokenSecretKey = buildAccessTokenSecretKey(connectionId);
-  const refreshTokenSecretKey = normalized.refreshToken ? buildRefreshTokenSecretKey(connectionId) : null;
+  const refreshTokenSecretKey = prepared.refreshToken ? buildRefreshTokenSecretKey(connectionId) : null;
   const encryptionSecret = resolveAppEncryptionSecret(env);
   const timestamp = new Date().toISOString();
 
-  await saveEncryptedSecret(db, accessTokenSecretKey, normalized.accessToken, encryptionSecret);
+  await saveEncryptedSecret(db, accessTokenSecretKey, prepared.accessToken, encryptionSecret);
 
   try {
     if (refreshTokenSecretKey) {
-      await saveEncryptedSecret(db, refreshTokenSecretKey, normalized.refreshToken, encryptionSecret);
+      await saveEncryptedSecret(db, refreshTokenSecretKey, prepared.refreshToken, encryptionSecret);
     }
 
     await db
@@ -106,9 +109,9 @@ export async function createChannelConnection(
       )
       .bind(
         connectionId,
-        normalized.channel,
-        normalized.label,
-        normalized.accountHandle,
+        prepared.channel,
+        prepared.label,
+        prepared.accountHandle,
         accessTokenSecretKey,
         refreshTokenSecretKey,
         timestamp,
@@ -124,12 +127,12 @@ export async function createChannelConnection(
   }
 
   return {
-    accountHandle: normalized.accountHandle,
-    channel: normalized.channel,
+    accountHandle: prepared.accountHandle,
+    channel: prepared.channel,
     createdAt: timestamp,
     hasRefreshToken: Boolean(refreshTokenSecretKey),
     id: connectionId,
-    label: normalized.label,
+    label: prepared.label,
     updatedAt: timestamp,
   };
 }
@@ -197,4 +200,31 @@ function normalizeChannel(value: string): QueueChannel | null {
   }
 
   return null;
+}
+
+async function prepareNormalizedDraft(
+  input: {
+    accessToken: string;
+    accountHandle: string;
+    channel: QueueChannel;
+    label: string;
+    refreshToken: string;
+  },
+  context: ProviderAdapterContext,
+): Promise<{
+  accessToken: string;
+  accountHandle: string;
+  channel: QueueChannel;
+  label: string;
+  refreshToken: string;
+}> {
+  try {
+    return await prepareChannelConnectionDraft(input, context);
+  } catch (error) {
+    if (error instanceof ProviderConnectionValidationError) {
+      throw new ChannelConnectionValidationError(error.message);
+    }
+
+    throw error;
+  }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadEncryptedSecret } from "./secrets";
 import worker, { handleRequest } from "./worker";
 import { createTestDatabase, createTestEnv, createTestR2Bucket, ensureGeneratedStylesheet, seedAuthUser } from "./test-support";
@@ -9,6 +9,10 @@ import { loadPostingSchedules } from "./schedule";
 ensureGeneratedStylesheet();
 
 describe("worker", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("redirects unauthenticated root requests to login", async () => {
     const db = createTestDatabase();
     await seedAuthUser(db, {
@@ -428,6 +432,73 @@ describe("worker", () => {
     const encryptedSecret = Array.from(db.state.appSecrets.values())[0];
     expect(encryptedSecret?.encryptedValue).not.toContain("access-token-value");
     await expect(loadEncryptedSecret(db, encryptedSecret!.key, "dedicated-secret")).resolves.toBe("access-token-value");
+  });
+
+  it("exchanges Bluesky app passwords for session tokens before saving the connection", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+
+      if (url === "https://bsky.social/xrpc/com.atproto.server.createSession") {
+        return new Response(
+          JSON.stringify({
+            accessJwt: "access-jwt-value",
+            refreshJwt: "refresh-jwt-value",
+            handle: "juho.bsky.social",
+            did: "did:plc:juho123",
+            active: true,
+          }),
+          {
+            status: 200,
+            headers: {
+              "content-type": "application/json",
+            },
+          },
+        );
+      }
+
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    const env = createTestEnv({
+      APP_ENCRYPTION_SECRET: "dedicated-secret",
+      DB: db,
+    });
+
+    const response = await handleRequest(
+      new Request("http://example.com/settings/channels", {
+        method: "POST",
+        headers: {
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+        body: new URLSearchParams({
+          channel: "bluesky",
+          label: "Personal Bluesky",
+          accountHandle: "juho.bsky.social",
+          accessToken: "app-password-value",
+          refreshToken: "",
+        }),
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/settings?channel=connected");
+    const savedConnection = Array.from(db.state.channelConnections.values())[0];
+    expect(savedConnection?.channel).toBe("bluesky");
+    expect(savedConnection?.refreshTokenSecretKey).toBeTruthy();
+    await expect(loadEncryptedSecret(db, savedConnection!.accessTokenSecretKey, "dedicated-secret")).resolves.toBe("access-jwt-value");
+    await expect(loadEncryptedSecret(db, savedConnection!.refreshTokenSecretKey!, "dedicated-secret")).resolves.toBe("refresh-jwt-value");
   });
 
   it("rejects channel settings updates from readonly users", async () => {

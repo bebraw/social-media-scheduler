@@ -11,6 +11,7 @@ Use this file for global constraints. Use feature specs under `specs/` for domai
 - Keep demo-only surfaces isolated from the normal authenticated routes and available only in local development.
 - Persist operator-defined posting schedules in D1 `app_state` as Cloudflare-cron-compatible data instead of inventing a separate scheduler config store too early.
 - Store channel connection metadata in dedicated D1 rows and store adapter credentials only as encrypted `app_secrets` values.
+- Keep social-provider SDKs behind provider adapter modules instead of calling them directly from routes or views.
 - Treat repo documentation as living context that should evolve with the code.
 - Treat architectural decisions as explicit records, not implicit tribal knowledge.
 - Add or update an ADR in `docs/adrs/` whenever a change introduces or changes a lasting architectural constraint, selects between credible architectural alternatives, or replaces an earlier decision.

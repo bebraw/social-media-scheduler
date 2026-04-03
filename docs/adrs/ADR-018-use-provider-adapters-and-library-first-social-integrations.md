@@ -1,6 +1,6 @@
 # ADR-018: Use Provider Adapters and Library-First Social Integrations
 
-**Status:** Proposed
+**Status:** Accepted
 
 **Date:** 2026-04-03
 
@@ -18,20 +18,20 @@ The current channel setup is intentionally generic:
 
 That baseline is good for storage, but not yet specific enough for real provider integrations. Bluesky, X, and LinkedIn all differ materially in auth shape, SDK maturity, and media constraints.
 
-This proposal captures the research pass so future implementation work starts from explicit trade-offs instead of repeating the same library evaluation.
+This ADR captures the research pass and the first concrete provider implementation so future work starts from explicit trade-offs instead of repeating the same library evaluation.
 
 ## Decision
 
-When the repo adds real publishing integrations, it should use a library-first provider-adapter architecture instead of hand-rolling every provider client from raw HTTP.
+The repo will use a library-first provider-adapter architecture instead of hand-rolling every provider client from raw HTTP.
 
-The proposed direction is:
+The architecture direction is:
 
 - add one internal provider adapter per social network behind a shared publishing interface
 - keep provider SDKs and protocol details out of routes, views, and generic channel persistence
 - store provider-specific credentials in encrypted secrets, but resolve and normalize them inside the provider adapter layer
 - test each provider integration through adapter contract tests and mocked SDK clients rather than live API calls in the baseline gate
 
-The preferred provider choices from this research pass are:
+The preferred provider choices are:
 
 - **Bluesky:** prefer `@atproto/api`
 - **X:** prefer `@xdevplatform/xdk`
@@ -39,7 +39,7 @@ The preferred provider choices from this research pass are:
 
 ## Trigger
 
-The repo now has multi-account channel setup, and the next likely step is turning saved connections into real outbound publishing integrations. The user explicitly asked for a research pass to avoid reinventing integration code and to keep the architecture clean and well tested.
+The repo now has multi-account channel setup, and the first provider-specific integration slice needed a durable boundary before more social-network code accumulated in generic settings and channel modules.
 
 ## Consequences
 
@@ -49,10 +49,11 @@ The repo now has multi-account channel setup, and the next likely step is turnin
 - The implementation can reuse official or near-official client behavior for OAuth flows, request formatting, media helpers, and typed responses where available.
 - Tests can target the repo's own adapter contract while mocking provider libraries, which keeps the baseline gate deterministic and fast.
 - Provider differences become explicit in one layer, which fits the repo's existing split between generic connection storage and future provider execution.
+- Bluesky connections now exchange a handle plus app password for session tokens before encrypted persistence, so the app does not retain the raw app password.
 
 **Negative:**
 
-- The settings and credential model will need to evolve beyond the current generic access-token and refresh-token form.
+- The settings and credential model still needs to evolve beyond the current generic access-token and refresh-token form.
 - LinkedIn remains the riskiest integration because access is approval-gated and the current official JavaScript client is marked beta and positioned for Node.js server use.
 - X and LinkedIn auth flows may require additional provider-specific metadata beyond what `channel_connections` stores today.
 - Wrapping SDKs behind adapters adds a small layer of translation code that would not exist in a direct HTTP-only implementation.
@@ -82,7 +83,7 @@ This was rejected because it would couple UI and request handling to provider-sp
 
 - `@atproto/api` is the strongest fit from this research pass.
 - The official docs show session creation, posting, and blob upload flows.
-- The implementation should model Bluesky credentials as session-oriented auth inputs, not just a static bearer token.
+- The implemented connection flow now treats the submitted value as an app password, validates it against Bluesky, and stores the returned `accessJwt` and `refreshJwt` session tokens instead of the raw password.
 
 ### X
 

@@ -29,6 +29,7 @@ describe("renderSettingsPage", () => {
     expect(html).toContain("Personal X");
     expect(html).toContain("@juho");
     expect(html).toContain("Tokens are encrypted before they are written to D1.");
+    expect(html).toContain("For Bluesky, enter a handle and app password");
     expect(html).toContain("Save channel connection");
   });
 
