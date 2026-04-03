@@ -33,6 +33,7 @@ Skip an ADR for small, reversible, or purely tactical choices.
 | [ADR-015](./ADR-015-constrain-demo-mode-to-local-development.md)            | Accepted   | Keep seeded demo workflows on a dedicated local-only route instead of the normal app pages.    |
 | [ADR-016](./ADR-016-store-posting-schedules-as-cloudflare-cron.md)          | Accepted   | Store per-channel posting schedules in app state as Cloudflare-cron-compatible expressions.    |
 | [ADR-017](./ADR-017-store-channel-connections-and-encrypted-credentials.md) | Accepted   | Store channel connections as account-level records and encrypt token-like credentials at rest. |
+| [ADR-018](./ADR-018-use-provider-adapters-and-library-first-social-integrations.md) | Proposed   | Use provider adapters plus library-first SDK choices for Bluesky, X, and LinkedIn integrations. |
 
 ## Creating A New ADR
 
