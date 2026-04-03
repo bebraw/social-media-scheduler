@@ -13,9 +13,9 @@ describe("channel connections", () => {
         APP_ENCRYPTION_SECRET: "dedicated-secret",
       }),
       {
-        channel: "x",
-        label: "Personal X",
-        accountHandle: "@juho",
+        channel: "linkedin",
+        label: "Company LinkedIn",
+        accountHandle: "Example Company",
         accessToken: "access-token-value",
         refreshToken: "refresh-token-value",
       },
@@ -35,18 +35,18 @@ describe("channel connections", () => {
     });
 
     await createChannelConnection(db, env, {
-      channel: "x",
-      label: "Personal X",
-      accountHandle: "@juho",
+      channel: "linkedin",
+      label: "Company LinkedIn",
+      accountHandle: "Example Company",
       accessToken: "access-token-value",
       refreshToken: "",
     });
 
     await expect(
       createChannelConnection(db, env, {
-        channel: "x",
-        label: "Duplicate X",
-        accountHandle: "@Juho",
+        channel: "linkedin",
+        label: "Duplicate LinkedIn",
+        accountHandle: "example company",
         accessToken: "another-token",
         refreshToken: "",
       }),
@@ -95,5 +95,50 @@ describe("channel connections", () => {
     });
     await expect(loadEncryptedSecret(db, buildAccessTokenSecretKey(connection.id), "dedicated-secret")).resolves.toBe("access-jwt-value");
     await expect(loadEncryptedSecret(db, buildRefreshTokenSecretKey(connection.id), "dedicated-secret")).resolves.toBe("refresh-jwt-value");
+  });
+
+  it("normalizes the saved X handle from the validated token", async () => {
+    const db = createTestDatabase();
+
+    const connection = await createChannelConnection(
+      db,
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+      }),
+      {
+        channel: "x",
+        label: "Personal X",
+        accountHandle: "temporary value",
+        accessToken: "oauth2-token-value",
+        refreshToken: "refresh-token-value",
+      },
+      {
+        fetch: async () =>
+          new Response(
+            JSON.stringify({
+              data: {
+                id: "123",
+                username: "juho",
+              },
+            }),
+            {
+              status: 200,
+              headers: {
+                "content-type": "application/json",
+              },
+            },
+          ),
+      },
+    );
+
+    expect(connection).toMatchObject({
+      channel: "x",
+      accountHandle: "@juho",
+      hasRefreshToken: true,
+    });
+    await expect(loadEncryptedSecret(db, buildAccessTokenSecretKey(connection.id), "dedicated-secret")).resolves.toBe("oauth2-token-value");
+    await expect(loadEncryptedSecret(db, buildRefreshTokenSecretKey(connection.id), "dedicated-secret")).resolves.toBe(
+      "refresh-token-value",
+    );
   });
 });

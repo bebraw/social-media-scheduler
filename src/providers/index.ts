@@ -1,9 +1,13 @@
 import { prepareBlueskyConnectionDraft } from "./bluesky";
+import { prepareXConnectionDraft } from "./x";
 import type { ProviderAdapterContext, PreparedChannelConnectionDraft, SocialProviderAdapter } from "./types";
 
 const adapters: Partial<Record<PreparedChannelConnectionDraft["channel"], SocialProviderAdapter>> = {
   bluesky: {
     prepareConnectionDraft: prepareBlueskyConnectionDraft,
+  },
+  x: {
+    prepareConnectionDraft: prepareXConnectionDraft,
   },
 };
 

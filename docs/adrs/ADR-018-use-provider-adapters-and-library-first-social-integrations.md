@@ -89,6 +89,7 @@ This was rejected because it would couple UI and request handling to provider-sp
 
 - `@xdevplatform/xdk` is the preferred first choice because it is the official TypeScript SDK.
 - The implementation should keep OAuth 2.0 user-context auth as the preferred path and allow for OAuth 1.0a where X still requires it.
+- The implemented connection flow now validates the submitted OAuth 2.0 user-context access token via `users.getMe()` and stores the normalized `@username` as the saved handle.
 - The repo should eventually replace the current approximate X character-counting logic with an official parser such as `twitter-text` when real publishing validation lands.
 
 ### LinkedIn

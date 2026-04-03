@@ -20,9 +20,9 @@ describe("runAutomatedBackup", () => {
     });
     seedStateEntry(db, "draft-policy", { adapters: ["mastodon"] });
     await createChannelConnection(db, env, {
-      channel: "x",
-      label: "Personal X",
-      accountHandle: "@juho",
+      channel: "linkedin",
+      label: "Company LinkedIn",
+      accountHandle: "Example Company",
       accessToken: "access-token-value",
       refreshToken: "",
     });

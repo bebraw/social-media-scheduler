@@ -32,6 +32,8 @@ Operators may need multiple accounts on the same provider, such as more than one
 - [ ] `POST /settings/channels` validates the provider, label, account handle/profile label, and credential input.
 - [ ] Bluesky connections validate the submitted handle and app password before the connection is saved.
 - [ ] Bluesky connections store returned session tokens instead of persisting the submitted app password.
+- [ ] X connections validate the submitted user-context access token before the connection is saved.
+- [ ] X connections normalize the stored account handle from the authenticated X username.
 - [ ] Token-like values are encrypted before they are written to D1.
 - [ ] Readonly users can inspect settings but cannot change them.
 - [ ] Backup exports include channel connection metadata plus encrypted secret blobs.
@@ -44,6 +46,7 @@ Operators may need multiple accounts on the same provider, such as more than one
 - The authenticated history page must not render fixed provider filters when no matching connection exists.
 - Duplicate connections for the same provider and account handle must be rejected.
 - Bluesky must not store the submitted app password after exchanging it for session tokens.
+- X must not trust a manually entered handle when the validated token resolves to a different authenticated username.
 - Encryption must remain reversible only with the configured app-level encryption secret.
 - The settings page must never render stored secret values back into the UI.
 - Backups may include encrypted credentials, but never the encryption secret itself.
@@ -72,6 +75,12 @@ Operators may need multiple accounts on the same provider, such as more than one
 - Given: the operator is already authenticated
 - When: they submit `POST /settings/channels` with the Bluesky handle and app password
 - Then: the app validates the Bluesky login, stores the normalized handle in `channel_connections`, and encrypts the returned session tokens instead of the submitted password
+
+**Scenario: Operator adds an X connection with a user token**
+
+- Given: the operator is already authenticated
+- When: they submit `POST /settings/channels` with an X user-context access token
+- Then: the app validates the token against the authenticated X account, stores the normalized `@username` in `channel_connections`, and encrypts the submitted token values
 
 **Scenario: Readonly user attempts to add a connection**
 

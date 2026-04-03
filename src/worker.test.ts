@@ -169,9 +169,9 @@ describe("worker", () => {
         APP_ENCRYPTION_SECRET: "dedicated-secret",
       }),
       {
-        channel: "x",
-        label: "Personal X",
-        accountHandle: "@juho",
+        channel: "linkedin",
+        label: "Company LinkedIn",
+        accountHandle: "Example Company",
         accessToken: "access-token-value",
         refreshToken: "",
       },
@@ -194,9 +194,9 @@ describe("worker", () => {
     );
 
     const body = await response.text();
-    expect(body).toContain("Personal X");
-    expect(body).toContain("30 16 * * MON,TUE,WED,THU,FRI");
-    expect(body).not.toContain("0 9 * * MON,WED,FRI");
+    expect(body).toContain("Company LinkedIn");
+    expect(body).toContain("0 9 * * MON,WED,FRI");
+    expect(body).not.toContain("30 16 * * MON,TUE,WED,THU,FRI");
   });
 
   it("allows editors to update per-channel posting schedules", async () => {
@@ -212,9 +212,9 @@ describe("worker", () => {
         APP_ENCRYPTION_SECRET: "dedicated-secret",
       }),
       {
-        channel: "x",
-        label: "Personal X",
-        accountHandle: "@juho",
+        channel: "linkedin",
+        label: "Company LinkedIn",
+        accountHandle: "Example Company",
         accessToken: "access-token-value",
         refreshToken: "",
       },
@@ -231,9 +231,9 @@ describe("worker", () => {
           cookie: `${SESSION_COOKIE}=${sessionToken}`,
         },
         body: new URLSearchParams([
-          ["x-time", "16:30"],
-          ["x-weekday", "MON"],
-          ["x-weekday", "WED"],
+          ["linkedin-time", "10:45"],
+          ["linkedin-weekday", "MON"],
+          ["linkedin-weekday", "WED"],
         ]),
       }),
       createTestEnv({
@@ -245,7 +245,7 @@ describe("worker", () => {
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toBe("/?schedule=updated");
     await expect(loadPostingSchedules(db)).resolves.toEqual(
-      expect.arrayContaining([expect.objectContaining({ channel: "x", cron: "30 16 * * MON,WED" })]),
+      expect.arrayContaining([expect.objectContaining({ channel: "linkedin", cron: "45 10 * * MON,WED" })]),
     );
   });
 
@@ -369,9 +369,9 @@ describe("worker", () => {
         APP_ENCRYPTION_SECRET: "dedicated-secret",
       }),
       {
-        channel: "x",
-        label: "Personal X",
-        accountHandle: "@juho",
+        channel: "linkedin",
+        label: "Company LinkedIn",
+        accountHandle: "Example Company",
         accessToken: "access-token-value",
         refreshToken: "",
       },
@@ -417,9 +417,9 @@ describe("worker", () => {
           cookie: `${SESSION_COOKIE}=${sessionToken}`,
         },
         body: new URLSearchParams({
-          channel: "x",
-          label: "Personal X",
-          accountHandle: "@juho",
+          channel: "linkedin",
+          label: "Company LinkedIn",
+          accountHandle: "Example Company",
           accessToken: "access-token-value",
           refreshToken: "refresh-token-value",
         }),
@@ -432,6 +432,72 @@ describe("worker", () => {
     const encryptedSecret = Array.from(db.state.appSecrets.values())[0];
     expect(encryptedSecret?.encryptedValue).not.toContain("access-token-value");
     await expect(loadEncryptedSecret(db, encryptedSecret!.key, "dedicated-secret")).resolves.toBe("access-token-value");
+  });
+
+  it("normalizes the saved X handle from the validated token", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+
+      if (url === "https://api.x.com/2/users/me") {
+        return new Response(
+          JSON.stringify({
+            data: {
+              id: "123",
+              username: "juho",
+            },
+          }),
+          {
+            status: 200,
+            headers: {
+              "content-type": "application/json",
+            },
+          },
+        );
+      }
+
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    const env = createTestEnv({
+      APP_ENCRYPTION_SECRET: "dedicated-secret",
+      DB: db,
+    });
+
+    const response = await handleRequest(
+      new Request("http://example.com/settings/channels", {
+        method: "POST",
+        headers: {
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+        body: new URLSearchParams({
+          channel: "x",
+          label: "Personal X",
+          accountHandle: "temporary value",
+          accessToken: "oauth2-token-value",
+          refreshToken: "refresh-token-value",
+        }),
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/settings?channel=connected");
+    const savedConnection = Array.from(db.state.channelConnections.values())[0];
+    expect(savedConnection?.channel).toBe("x");
+    expect(savedConnection?.accountHandle).toBe("@juho");
+    await expect(loadEncryptedSecret(db, savedConnection!.accessTokenSecretKey, "dedicated-secret")).resolves.toBe("oauth2-token-value");
+    await expect(loadEncryptedSecret(db, savedConnection!.refreshTokenSecretKey!, "dedicated-secret")).resolves.toBe("refresh-token-value");
   });
 
   it("exchanges Bluesky app passwords for session tokens before saving the connection", async () => {
@@ -578,9 +644,9 @@ describe("worker", () => {
         APP_ENCRYPTION_SECRET: "dedicated-secret",
       }),
       {
-        channel: "x",
-        label: "Personal X",
-        accountHandle: "@juho",
+        channel: "linkedin",
+        label: "Company LinkedIn",
+        accountHandle: "Example Company",
         accessToken: "access-token-value",
         refreshToken: "",
       },
@@ -603,7 +669,7 @@ describe("worker", () => {
     const body = await response.text();
     expect(body).toContain("Compose");
     expect(body).toContain("Channel drafts");
-    expect(body).toContain("Personal X");
+    expect(body).toContain("Company LinkedIn");
     expect(body).toContain("data-queue-button");
   });
 
@@ -620,9 +686,9 @@ describe("worker", () => {
         APP_ENCRYPTION_SECRET: "dedicated-secret",
       }),
       {
-        channel: "x",
-        label: "Personal X",
-        accountHandle: "@juho",
+        channel: "linkedin",
+        label: "Company LinkedIn",
+        accountHandle: "Example Company",
         accessToken: "access-token-value",
         refreshToken: "",
       },
@@ -645,7 +711,7 @@ describe("worker", () => {
     const body = await response.text();
     expect(body).toContain("History");
     expect(body).toContain("data-history-filter");
-    expect(body).toContain("Personal X");
+    expect(body).toContain("Company LinkedIn");
     expect(body).toContain("No sent posts are available yet.");
   });
 
