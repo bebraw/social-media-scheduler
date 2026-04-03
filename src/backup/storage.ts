@@ -134,7 +134,9 @@ function isSchedulerDataExportLike(value: unknown): value is SchedulerDataExport
     typeof value.schemaVersion === "number" &&
     typeof value.exportedAt === "string" &&
     Array.isArray(value.authUsers) &&
-    Array.isArray(value.stateEntries)
+    Array.isArray(value.stateEntries) &&
+    Array.isArray(value.channelConnections) &&
+    Array.isArray(value.appSecrets)
   );
 }
 

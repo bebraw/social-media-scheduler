@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { saveEncryptedSecret } from "../secrets";
 import { runAutomatedBackup } from "./index";
 import { createTestDatabase, createTestR2Bucket, seedAuthUser, seedStateEntry } from "../test-support";
+import { createChannelConnection } from "../channels";
+import { createTestEnv } from "../test-support";
 
 describe("runAutomatedBackup", () => {
   it("writes a new backup when the exported content changes", async () => {
     const db = createTestDatabase();
     const bucket = createTestR2Bucket();
+    const env = createTestEnv({
+      APP_ENCRYPTION_SECRET: "dedicated-secret",
+    });
 
     await seedAuthUser(db, {
       name: "Scheduler Admin",
@@ -13,6 +19,14 @@ describe("runAutomatedBackup", () => {
       role: "editor",
     });
     seedStateEntry(db, "draft-policy", { adapters: ["mastodon"] });
+    await createChannelConnection(db, env, {
+      channel: "x",
+      label: "Personal X",
+      accountHandle: "@juho",
+      accessToken: "access-token-value",
+      refreshToken: "",
+    });
+    await saveEncryptedSecret(db, "manual:extra", "custom-value", "dedicated-secret");
 
     const result = await runAutomatedBackup(db, bucket, {
       backupPrefix: "automated-backups",
@@ -24,6 +38,8 @@ describe("runAutomatedBackup", () => {
     expect(result.manifest?.counts).toEqual({
       authUsers: 1,
       stateEntries: 1,
+      channelConnections: 1,
+      appSecrets: 2,
     });
     expect(bucket.objects.size).toBe(3);
   });

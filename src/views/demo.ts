@@ -86,7 +86,7 @@ export function renderDemoPage({ drafts, queuedPosts, sentHistory, user }: DemoP
           <p class="text-sm font-medium text-app-text-soft"><span data-history-count>${escapeHtml(String(sentHistory.length))}</span> posts shown</p>
         </div>
         <div class="mt-5 flex flex-wrap gap-2" aria-label="History filters">
-          ${renderHistoryFilters(sentHistory)}
+          ${renderHistoryFilters([], sentHistory)}
         </div>
         <div class="mt-5 grid gap-3" data-sent-history-list>${renderHistoryCards(sentHistory)}</div>
         <p class="mt-4 hidden rounded-xl border border-dashed border-app-line bg-app-canvas/50 px-4 py-3 text-sm text-app-text-soft" data-history-empty>No demo sent posts match this channel yet.</p>

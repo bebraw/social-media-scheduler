@@ -59,7 +59,7 @@ If local CI warns with `No such remote 'origin'`, add `GITHUB_REPO=owner/repo` t
 
 The template now ships with a private scheduler foundation in `src/worker.ts`. `npm run dev` starts it on `http://127.0.0.1:8787`, and Playwright uses `npm run e2e:server` on `http://127.0.0.1:8788` after first applying local D1 migrations and creating the default e2e account. The e2e server forces Chokidar polling mode to avoid file-watcher exhaustion in macOS-hosted local runs while preserving the normal `npm run dev` developer loop. Auth helpers live under `src/auth/`, backup helpers live under `src/backup/`, demo-mode helpers live under `src/demo/`, posting schedule helpers live under `src/schedule/`, API modules live under `src/api/`, view modules live under `src/views/`, and tests are colocated under `src/`.
 
-After sign-in, the default authenticated surface is now the `Queue` view at `/`, which also includes the per-channel posting schedule editor. The post authoring controls live on the dedicated `Compose` view at `/compose`.
+After sign-in, the default authenticated surface is now the `Queue` view at `/`, which includes the per-channel posting schedule editor for whichever providers are currently configured in Settings. The dedicated `Compose` and `History` views also derive their visible accounts and filters from those saved channel connections instead of assuming one fixed card per provider.
 
 Posting schedules are stored in D1 `app_state` as Cloudflare-cron-compatible expressions derived from the queue UI's weekday and UTC time controls. The app saves and renders those cron expressions directly, but it does not rewrite deployed Wrangler Cron Triggers for you. If you want scheduled events to fire in a deployed environment, copy the saved cron values into `wrangler.jsonc` or the equivalent deployment config.
 
@@ -69,9 +69,9 @@ The GitHub Actions CI workflow splits fast checks from browser checks into separ
 
 The starter UI now follows the same Tailwind v4 baseline shape as `thesis-journey-tracker`: Tailwind input lives in `src/tailwind-input.css`, generated CSS is written to `.generated/styles.css`, and Wrangler runs `npm run build:css` automatically before local development.
 
-Auth now mirrors the lightweight setup used in `thesis-journey-tracker`: accounts live in D1, passwords are stored as PBKDF2-SHA256 hashes, session cookies are HMAC-signed with `SESSION_SECRET`, and failed logins are rate-limited per client IP and login name. The checked-in migration also reserves `app_state` and `app_secrets` tables for future scheduler state and encrypted adapter credentials.
+Auth now mirrors the lightweight setup used in `thesis-journey-tracker`: accounts live in D1, passwords are stored as PBKDF2-SHA256 hashes, session cookies are HMAC-signed with `SESSION_SECRET`, and failed logins are rate-limited per client IP and login name. Scheduler state lives in D1 `app_state`, channel connection metadata lives in `channel_connections`, and token-like credentials are encrypted before they are written into `app_secrets`.
 
-Automated backups also follow the `thesis-journey-tracker` shape: a scheduled handler writes a JSON export, a small Markdown summary, and a manifest into R2, then skips creating new artifacts when the export content hash has not changed.
+Automated backups also follow the `thesis-journey-tracker` shape: a scheduled handler writes a JSON export, a small Markdown summary, and a manifest into R2, then skips creating new artifacts when the export content hash has not changed. Those exports now include encrypted secret blobs and channel connection metadata in addition to auth users and app state.
 
 The Lighthouse setup is also generic, but the Worker stub gives it a concrete local target. Use `LIGHTHOUSE_URL=http://127.0.0.1:8787 LIGHTHOUSE_SERVER_COMMAND="npm run dev" npm run lighthouse`. Reports are written to `reports/lighthouse/`.
 
@@ -90,6 +90,7 @@ The template keeps secret handling lightweight and explicit:
 - Keep local secrets in untracked files such as `.dev.vars`.
 - Commit example files such as `.dev.vars.example` with placeholder values only.
 - Treat R2 backups as sensitive because they include password hashes from `app_users`.
+- Treat encrypted channel credentials as sensitive even though the stored D1 and backup values are ciphertext.
 - Treat `npm run security:audit` as part of the baseline gate for shipped runtime dependencies.
 
 ## Quality Gate

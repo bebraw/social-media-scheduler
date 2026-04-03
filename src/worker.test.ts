@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { loadEncryptedSecret } from "./secrets";
 import worker, { handleRequest } from "./worker";
 import { createTestDatabase, createTestEnv, createTestR2Bucket, ensureGeneratedStylesheet, seedAuthUser } from "./test-support";
 import { createSessionToken, SESSION_COOKIE, SESSION_TTL_SECONDS } from "./auth";
+import { createChannelConnection } from "./channels";
 import { loadPostingSchedules } from "./schedule";
 
 ensureGeneratedStylesheet();
@@ -141,11 +143,56 @@ describe("worker", () => {
     expect(body).toContain(">Compose<");
     expect(body).not.toContain("Open composer");
     expect(body).toContain(">History<");
+    expect(body).toContain(">Settings<");
+    expect(body).toContain("Configured channels");
+    expect(body).toContain("No channel connections are configured yet.");
     expect(body).toContain("Posting schedule");
-    expect(body).toContain("0 9 * * MON,WED,FRI");
-    expect(body).not.toContain("View sent history");
-    expect(body).not.toContain("Channel drafts");
+    expect(body).toContain("Add a channel connection in Settings before editing the posting schedule.");
+    expect(body).toContain("Configured connections");
     expect(body).not.toContain("Open demo mode");
+  });
+
+  it("renders only configured provider schedules on the queue page", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    await createChannelConnection(
+      db,
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+      }),
+      {
+        channel: "x",
+        label: "Personal X",
+        accountHandle: "@juho",
+        accessToken: "access-token-value",
+        refreshToken: "",
+      },
+    );
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+
+    const response = await handleRequest(
+      new Request("http://example.com/", {
+        headers: {
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+      }),
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+        DB: db,
+      }),
+    );
+
+    const body = await response.text();
+    expect(body).toContain("Personal X");
+    expect(body).toContain("30 16 * * MON,TUE,WED,THU,FRI");
+    expect(body).not.toContain("0 9 * * MON,WED,FRI");
   });
 
   it("allows editors to update per-channel posting schedules", async () => {
@@ -155,6 +202,19 @@ describe("worker", () => {
       password: "test-password-123",
       role: "editor",
     });
+    await createChannelConnection(
+      db,
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+      }),
+      {
+        channel: "x",
+        label: "Personal X",
+        accountHandle: "@juho",
+        accessToken: "access-token-value",
+        refreshToken: "",
+      },
+    );
     const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
       name: "Scheduler Admin",
       role: "editor",
@@ -167,25 +227,22 @@ describe("worker", () => {
           cookie: `${SESSION_COOKIE}=${sessionToken}`,
         },
         body: new URLSearchParams([
-          ["linkedin-time", "10:45"],
-          ["linkedin-weekday", "TUE"],
           ["x-time", "16:30"],
           ["x-weekday", "MON"],
           ["x-weekday", "WED"],
-          ["bluesky-time", "11:15"],
-          ["bluesky-weekday", "SAT"],
         ]),
       }),
-      createTestEnv({ DB: db }),
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+        DB: db,
+      }),
     );
 
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toBe("/?schedule=updated");
-    await expect(loadPostingSchedules(db)).resolves.toMatchObject([
-      { channel: "linkedin", cron: "45 10 * * TUE" },
-      { channel: "x", cron: "30 16 * * MON,WED" },
-      { channel: "bluesky", cron: "15 11 * * SAT" },
-    ]);
+    await expect(loadPostingSchedules(db)).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ channel: "x", cron: "30 16 * * MON,WED" })]),
+    );
   });
 
   it("rejects posting schedule updates from readonly users", async () => {
@@ -222,7 +279,7 @@ describe("worker", () => {
     await expect(response.text()).resolves.toContain("Readonly users cannot change posting schedules.");
   });
 
-  it("returns a validation error when a posting schedule is incomplete", async () => {
+  it("rejects posting schedule updates when no channels are configured", async () => {
     const db = createTestDatabase();
     await seedAuthUser(db, {
       name: "Scheduler Admin",
@@ -240,19 +297,201 @@ describe("worker", () => {
         headers: {
           cookie: `${SESSION_COOKIE}=${sessionToken}`,
         },
-        body: new URLSearchParams([
-          ["linkedin-time", "10:45"],
-          ["x-time", "16:30"],
-          ["x-weekday", "MON"],
-          ["bluesky-time", "11:15"],
-          ["bluesky-weekday", "SAT"],
-        ]),
+        body: new URLSearchParams({
+          "x-time": "16:30",
+          "x-weekday": "MON",
+        }),
       }),
       createTestEnv({ DB: db }),
     );
 
     expect(response.status).toBe(400);
+    await expect(response.text()).resolves.toContain("Add at least one channel connection before editing the posting schedule.");
+  });
+
+  it("returns a validation error when a posting schedule is incomplete", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    await createChannelConnection(
+      db,
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+      }),
+      {
+        channel: "linkedin",
+        label: "Company LinkedIn",
+        accountHandle: "Example Company",
+        accessToken: "access-token-value",
+        refreshToken: "",
+      },
+    );
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+
+    const response = await handleRequest(
+      new Request("http://example.com/posting-schedule", {
+        method: "POST",
+        headers: {
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+        body: new URLSearchParams([["linkedin-time", "10:45"]]),
+      }),
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+        DB: db,
+      }),
+    );
+
+    expect(response.status).toBe(400);
     await expect(response.text()).resolves.toContain("Choose at least one posting day for LinkedIn.");
+  });
+
+  it("renders the authenticated settings page", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    await createChannelConnection(
+      db,
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+      }),
+      {
+        channel: "x",
+        label: "Personal X",
+        accountHandle: "@juho",
+        accessToken: "access-token-value",
+        refreshToken: "",
+      },
+    );
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+
+    const response = await handleRequest(
+      new Request("http://example.com/settings", {
+        headers: {
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.text()).resolves.toContain("Channel setup");
+  });
+
+  it("allows editors to save encrypted channel connections", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+    const env = createTestEnv({
+      APP_ENCRYPTION_SECRET: "dedicated-secret",
+      DB: db,
+    });
+
+    const response = await handleRequest(
+      new Request("http://example.com/settings/channels", {
+        method: "POST",
+        headers: {
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+        body: new URLSearchParams({
+          channel: "x",
+          label: "Personal X",
+          accountHandle: "@juho",
+          accessToken: "access-token-value",
+          refreshToken: "refresh-token-value",
+        }),
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/settings?channel=connected");
+    const encryptedSecret = Array.from(db.state.appSecrets.values())[0];
+    expect(encryptedSecret?.encryptedValue).not.toContain("access-token-value");
+    await expect(loadEncryptedSecret(db, encryptedSecret!.key, "dedicated-secret")).resolves.toBe("access-token-value");
+  });
+
+  it("rejects channel settings updates from readonly users", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Readonly User",
+      password: "test-password-123",
+      role: "readonly",
+    });
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Readonly User",
+      role: "readonly",
+    });
+
+    const response = await handleRequest(
+      new Request("http://example.com/settings/channels", {
+        method: "POST",
+        headers: {
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+        body: new URLSearchParams({
+          channel: "x",
+          label: "Personal X",
+          accountHandle: "@juho",
+          accessToken: "access-token-value",
+        }),
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.text()).resolves.toContain("Readonly users cannot change channel settings.");
+  });
+
+  it("returns a validation error when a channel connection is incomplete", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+
+    const response = await handleRequest(
+      new Request("http://example.com/settings/channels", {
+        method: "POST",
+        headers: {
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+        body: new URLSearchParams({
+          channel: "x",
+          label: "",
+          accountHandle: "@juho",
+          accessToken: "",
+        }),
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.text()).resolves.toContain("Add a label so this connection is easy to identify later.");
   });
 
   it("renders the authenticated compose page", async () => {
@@ -262,6 +501,19 @@ describe("worker", () => {
       password: "test-password-123",
       role: "editor",
     });
+    await createChannelConnection(
+      db,
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+      }),
+      {
+        channel: "x",
+        label: "Personal X",
+        accountHandle: "@juho",
+        accessToken: "access-token-value",
+        refreshToken: "",
+      },
+    );
     const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
       name: "Scheduler Admin",
       role: "editor",
@@ -280,6 +532,7 @@ describe("worker", () => {
     const body = await response.text();
     expect(body).toContain("Compose");
     expect(body).toContain("Channel drafts");
+    expect(body).toContain("Personal X");
     expect(body).toContain("data-queue-button");
   });
 
@@ -290,6 +543,19 @@ describe("worker", () => {
       password: "test-password-123",
       role: "editor",
     });
+    await createChannelConnection(
+      db,
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+      }),
+      {
+        channel: "x",
+        label: "Personal X",
+        accountHandle: "@juho",
+        accessToken: "access-token-value",
+        refreshToken: "",
+      },
+    );
     const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
       name: "Scheduler Admin",
       role: "editor",
@@ -308,6 +574,7 @@ describe("worker", () => {
     const body = await response.text();
     expect(body).toContain("History");
     expect(body).toContain("data-history-filter");
+    expect(body).toContain("Personal X");
     expect(body).toContain("No sent posts are available yet.");
   });
 
@@ -412,7 +679,7 @@ describe("worker", () => {
     await expect(response.json()).resolves.toEqual({
       ok: true,
       name: "social-media-scheduler",
-      routes: ["/", "/compose", "/history", "/posting-schedule", "/login", "/api/health"],
+      routes: ["/", "/compose", "/history", "/settings", "/settings/channels", "/posting-schedule", "/login", "/api/health"],
     });
   });
 
@@ -422,7 +689,7 @@ describe("worker", () => {
     await expect(response.json()).resolves.toEqual({
       ok: true,
       name: "social-media-scheduler",
-      routes: ["/", "/compose", "/history", "/posting-schedule", "/login", "/api/health", "/demo"],
+      routes: ["/", "/compose", "/history", "/settings", "/settings/channels", "/posting-schedule", "/login", "/api/health", "/demo"],
     });
   });
 

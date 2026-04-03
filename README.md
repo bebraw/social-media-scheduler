@@ -4,6 +4,7 @@ This repo is the foundation for a private social media scheduler for personal pr
 
 - D1-backed local auth with signed session cookies
 - Optional scheduled R2 backups for application state snapshots
+- A settings surface for multi-account channel connections with encrypted credentials at rest
 
 Local development in this repo targets macOS. Other platforms may need script and tooling adjustments before the baseline workflow works as documented.
 
@@ -24,6 +25,7 @@ Local development in this repo targets macOS. Other platforms may need script an
 - npm now comes from that pinned Node release instead of a separate repo version file.
 - Copy `.dev.vars.example` to `.dev.vars` before running projects that need local secrets.
 - Set `DEMO_MODE=true` in `.dev.vars` if you want the local-only demo workspace at `/demo`.
+- Set `APP_ENCRYPTION_SECRET` in `.dev.vars` if you want channel credentials encrypted with a key separate from `SESSION_SECRET`.
 - Create the D1 database binding and replace the placeholder `database_id` in `wrangler.jsonc` before running auth flows.
 - Run `npm run db:migrate` before the first authenticated start.
 - Create at least one local account with `npm run account:create -- --name "Scheduler Admin" --password "change-me" --role editor`.
@@ -46,8 +48,10 @@ Local development in this repo targets macOS. Other platforms may need script an
 
 - `GET /login` serves the local sign-in page.
 - `GET /` redirects anonymous users to login and serves the authenticated queue view plus per-channel posting schedule editor for signed-in users.
-- `GET /compose` serves the authenticated post composer for signed-in users.
-- `GET /history` serves the authenticated history page with per-channel inspection filters for signed-in users.
+- `GET /compose` serves the authenticated post composer for the currently configured channel connections.
+- `GET /history` serves the authenticated history page with filters derived from the configured channel connections.
+- `GET /settings` serves the authenticated channel settings page for per-account connection management.
+- `POST /settings/channels` stores a new channel connection and encrypts its token fields in D1-backed secret storage.
 - `POST /posting-schedule` updates the authenticated per-channel posting schedule and stores the resulting Cloudflare cron expressions in D1 app state.
 - `GET /demo` serves the development-only demo workspace when `DEMO_MODE=true` is set locally and the request stays on a loopback host.
 - `GET /styles.css` serves the generated Tailwind stylesheet.
@@ -59,10 +63,12 @@ Local development in this repo targets macOS. Other platforms may need script an
 - `src/worker.ts` is the Worker entry point and top-level router.
 - `src/auth/` holds password hashing, session, and D1-backed auth state helpers.
 - `src/backup/` holds the scheduled backup export and R2 storage helpers.
+- `src/channels/` holds per-account channel connection persistence and validation.
 - `src/demo/` holds development-only demo gating, seeded data, and local demo scheduling helpers.
 - `src/history/` holds sent-post history loading for the normal authenticated routes.
 - `src/queue/` holds channel constraint logic for the dedicated composer and related queue behavior.
 - `src/schedule/` holds per-channel posting schedule persistence plus Cloudflare cron mapping helpers.
+- `src/secrets/` holds reusable encrypted secret storage helpers for D1-backed credentials.
 - `src/api/` holds API response modules such as the health endpoint.
-- `src/views/` holds HTML rendering modules for the queue, compose, history, and demo surfaces.
+- `src/views/` holds HTML rendering modules for the queue, compose, history, settings, and demo surfaces.
 - Tests live next to the code they exercise under `src/`.

@@ -12,6 +12,13 @@ import {
 } from "./auth";
 import type { Env, ScheduledControllerLike } from "./app-env";
 import { runAutomatedBackup } from "./backup";
+import {
+  ChannelConnectionValidationError,
+  createChannelConnection,
+  getDefaultChannelConnectionDraft,
+  listConfiguredProviders,
+  loadChannelConnections,
+} from "./channels";
 import { canAccessDemo, getDemoDrafts, getDemoSentHistory, loadDemoQueuedPosts, scheduleDemoPost } from "./demo";
 import { loadSentPostHistory } from "./history";
 import { listAppRoutes } from "./app-routes";
@@ -29,6 +36,7 @@ import { renderHistoryPage } from "./views/history";
 import { HOME_PAGE_SCRIPT, renderQueuePage } from "./views/home";
 import { renderLoginPage } from "./views/login";
 import { renderNotFoundPage } from "./views/not-found";
+import { renderSettingsPage } from "./views/settings";
 import { cssResponse, htmlResponse, javascriptResponse, redirectResponse } from "./views/shared";
 
 export default {
@@ -147,9 +155,12 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
 
   if (url.pathname === "/") {
     const postingSchedules = env.DB ? await loadPostingSchedules(env.DB) : getDefaultPostingSchedules();
+    const connections = env.DB ? await loadChannelConnections(env.DB) : [];
 
     return htmlResponse(
       renderQueuePage({
+        configuredConnections: connections.length,
+        connections,
         demoAvailable: canAccessDemo(request, env),
         postingSchedules,
         scheduleSaved: url.searchParams.get("schedule") === "updated",
@@ -167,9 +178,27 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
     }
 
     const formData = await request.formData();
+    const connections = await loadChannelConnections(env.DB);
+    const configuredProviders = listConfiguredProviders(connections);
+
+    if (configuredProviders.length === 0) {
+      const postingSchedules = await loadPostingSchedules(env.DB);
+
+      return htmlResponse(
+        renderQueuePage({
+          configuredConnections: 0,
+          connections,
+          demoAvailable: canAccessDemo(request, env),
+          postingSchedules,
+          scheduleError: "Add at least one channel connection before editing the posting schedule.",
+          user: sessionUser,
+        }),
+        400,
+      );
+    }
 
     try {
-      const schedules = CHANNEL_CONSTRAINTS.map((constraint) =>
+      const schedules = CHANNEL_CONSTRAINTS.filter((constraint) => configuredProviders.includes(constraint.id)).map((constraint) =>
         buildPostingSchedule({
           channel: constraint.id,
           time: String(formData.get(`${constraint.id}-time`) || ""),
@@ -185,6 +214,8 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
 
       return htmlResponse(
         renderQueuePage({
+          configuredConnections: connections.length,
+          connections,
           demoAvailable: canAccessDemo(request, env),
           postingSchedules,
           scheduleError: message,
@@ -195,9 +226,66 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
     }
   }
 
+  if (url.pathname === "/settings" && request.method === "GET") {
+    if (!env.DB) {
+      return new Response("D1 binding is missing.", { status: 500 });
+    }
+
+    return htmlResponse(
+      renderSettingsPage({
+        canEdit: !isReadonlyUser(sessionUser),
+        connections: await loadChannelConnections(env.DB),
+        demoAvailable: canAccessDemo(request, env),
+        saved: url.searchParams.get("channel") === "connected",
+        user: sessionUser,
+      }),
+    );
+  }
+
+  if (url.pathname === "/settings/channels" && request.method === "POST") {
+    if (!env.DB) {
+      return new Response("D1 binding is missing.", { status: 500 });
+    }
+    if (isReadonlyUser(sessionUser)) {
+      return new Response("Readonly users cannot change channel settings.", { status: 403 });
+    }
+
+    const formData = await request.formData();
+    const draft = {
+      ...getDefaultChannelConnectionDraft(),
+      channel: String(formData.get("channel") || ""),
+      label: String(formData.get("label") || ""),
+      accountHandle: String(formData.get("accountHandle") || ""),
+      accessToken: String(formData.get("accessToken") || ""),
+      refreshToken: String(formData.get("refreshToken") || ""),
+    };
+
+    try {
+      await createChannelConnection(env.DB, env, draft);
+      return redirectResponse("/settings?channel=connected");
+    } catch (error) {
+      const message = error instanceof ChannelConnectionValidationError ? error.message : "Unable to save the channel connection.";
+
+      return htmlResponse(
+        renderSettingsPage({
+          canEdit: true,
+          connections: await loadChannelConnections(env.DB),
+          demoAvailable: canAccessDemo(request, env),
+          draft,
+          error: message,
+          user: sessionUser,
+        }),
+        error instanceof ChannelConnectionValidationError ? 400 : 500,
+      );
+    }
+  }
+
   if (url.pathname === "/compose") {
+    const connections = env.DB ? await loadChannelConnections(env.DB) : [];
+
     return htmlResponse(
       renderComposePage({
+        connections,
         demoAvailable: canAccessDemo(request, env),
         user: sessionUser,
       }),
@@ -206,9 +294,11 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
 
   if (url.pathname === "/history") {
     const sentHistory = env.DB ? await loadSentPostHistory(env.DB) : [];
+    const connections = env.DB ? await loadChannelConnections(env.DB) : [];
 
     return htmlResponse(
       renderHistoryPage({
+        connections,
         demoAvailable: canAccessDemo(request, env),
         sentHistory,
         user: sessionUser,

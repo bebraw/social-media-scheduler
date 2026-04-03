@@ -14,7 +14,10 @@ export function renderPostingSchedulePanel({ canEdit, error, saved, schedules }:
   return renderPanel(`
     ${renderSectionHeader({
       className: "items-start",
-      description: "Set the weekly UTC posting window for each channel. Each saved schedule is stored as a Cloudflare cron expression.",
+      description:
+        schedules.length > 0
+          ? "Set the weekly UTC posting window for each configured provider. Each saved schedule is stored as a Cloudflare cron expression."
+          : "Posting schedules appear after at least one channel connection is configured in Settings.",
       title: "Posting schedule",
     })}
     ${
@@ -23,7 +26,10 @@ export function renderPostingSchedulePanel({ canEdit, error, saved, schedules }:
         : ""
     }
     ${error ? `<p class="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">${escapeHtml(error)}</p>` : ""}
-    <form class="mt-5 grid gap-4" method="post" action="/posting-schedule">
+    ${
+      schedules.length === 0
+        ? '<p class="mt-5 rounded-xl border border-dashed border-app-line bg-app-canvas/50 px-4 py-4 text-sm leading-6 text-app-text-soft">Add a channel connection in Settings before editing the posting schedule.</p>'
+        : `<form class="mt-5 grid gap-4" method="post" action="/posting-schedule">
       ${schedules.map((schedule) => renderPostingScheduleCard(schedule, canEdit)).join("")}
       <div class="flex flex-col gap-3 border-t border-app-line pt-4 sm:flex-row sm:items-center sm:justify-between">
         <p class="text-sm leading-6 text-app-text-soft">To activate these schedules in deployed scheduled events, copy the saved cron expressions into your Wrangler Cron Triggers.</p>
@@ -33,7 +39,8 @@ export function renderPostingSchedulePanel({ canEdit, error, saved, schedules }:
             : '<p class="text-sm font-medium text-app-text-soft">Readonly users cannot change posting schedules.</p>'
         }
       </div>
-    </form>
+    </form>`
+    }
   `);
 }
 

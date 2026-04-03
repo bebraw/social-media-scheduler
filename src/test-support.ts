@@ -32,8 +32,27 @@ interface TestStateEntryRecord {
   updatedAt: string;
 }
 
+interface TestSecretEntryRecord {
+  encryptedValue: string;
+  key: string;
+  updatedAt: string;
+}
+
+interface TestChannelConnectionRecord {
+  accessTokenSecretKey: string;
+  accountHandle: string;
+  channel: "linkedin" | "x" | "bluesky";
+  createdAt: string;
+  id: string;
+  label: string;
+  refreshTokenSecretKey: string | null;
+  updatedAt: string;
+}
+
 interface TestDatabaseState {
   appUsers: TestAuthUserRecord[];
+  appSecrets: Map<string, TestSecretEntryRecord>;
+  channelConnections: Map<string, TestChannelConnectionRecord>;
   loginAttempts: Map<string, TestLoginAttemptRecord>;
   appState: Map<string, TestStateEntryRecord>;
   nextUserId: number;
@@ -42,6 +61,8 @@ interface TestDatabaseState {
 export class TestDatabase implements D1Database {
   readonly state: TestDatabaseState = {
     appUsers: [],
+    appSecrets: new Map(),
+    channelConnections: new Map(),
     loginAttempts: new Map(),
     appState: new Map(),
     nextUserId: 1,
@@ -135,6 +156,46 @@ class TestPreparedStatement implements D1PreparedStatement {
       return { success: true, meta: { changes: 1 } };
     }
 
+    if (this.normalizedQuery.startsWith("insert into app_secrets")) {
+      const [key, encryptedValue, updatedAt] = this.bindings as [string, string, string];
+      this.state.appSecrets.set(key, {
+        key,
+        encryptedValue,
+        updatedAt,
+      });
+      return { success: true, meta: { changes: 1 } };
+    }
+
+    if (this.normalizedQuery.startsWith("delete from app_secrets")) {
+      const [key] = this.bindings as [string];
+      this.state.appSecrets.delete(key);
+      return { success: true, meta: { changes: 1 } };
+    }
+
+    if (this.normalizedQuery.startsWith("insert into channel_connections")) {
+      const [id, channel, label, accountHandle, accessTokenSecretKey, refreshTokenSecretKey, createdAt, updatedAt] = this.bindings as [
+        string,
+        "linkedin" | "x" | "bluesky",
+        string,
+        string,
+        string,
+        string | null,
+        string,
+        string,
+      ];
+      this.state.channelConnections.set(id, {
+        id,
+        channel,
+        label,
+        accountHandle,
+        accessTokenSecretKey,
+        refreshTokenSecretKey,
+        createdAt,
+        updatedAt,
+      });
+      return { success: true, meta: { changes: 1 } };
+    }
+
     throw new Error(`Unsupported run query in test database: ${this.normalizedQuery}`);
   }
 
@@ -208,6 +269,92 @@ class TestPreparedStatement implements D1PreparedStatement {
               state_key: entry.key,
               value_json: entry.valueJson,
               updated_at: entry.updatedAt,
+            },
+          ]
+        : [];
+    }
+
+    if (this.normalizedQuery.includes("from app_secrets order by secret_key asc")) {
+      return Array.from(this.state.appSecrets.values())
+        .sort((left, right) => left.key.localeCompare(right.key))
+        .map((entry) => ({
+          secret_key: entry.key,
+          encrypted_value: entry.encryptedValue,
+          updated_at: entry.updatedAt,
+        }));
+    }
+
+    if (this.normalizedQuery.includes("from app_secrets where secret_key = ?")) {
+      const [key] = this.bindings as [string];
+      const entry = this.state.appSecrets.get(key);
+      return entry
+        ? [
+            {
+              secret_key: entry.key,
+              encrypted_value: entry.encryptedValue,
+              updated_at: entry.updatedAt,
+            },
+          ]
+        : [];
+    }
+
+    if (
+      this.normalizedQuery.includes("from channel_connections order by channel asc, label asc, created_at asc") &&
+      this.normalizedQuery.includes("select id, channel, label, account_handle, refresh_token_secret_key, created_at, updated_at")
+    ) {
+      return Array.from(this.state.channelConnections.values())
+        .sort(
+          (left, right) =>
+            left.channel.localeCompare(right.channel) ||
+            left.label.localeCompare(right.label) ||
+            left.createdAt.localeCompare(right.createdAt),
+        )
+        .map((entry) => ({
+          id: entry.id,
+          channel: entry.channel,
+          label: entry.label,
+          account_handle: entry.accountHandle,
+          refresh_token_secret_key: entry.refreshTokenSecretKey,
+          created_at: entry.createdAt,
+          updated_at: entry.updatedAt,
+        }));
+    }
+
+    if (
+      this.normalizedQuery.includes("from channel_connections order by channel asc, label asc, created_at asc") &&
+      this.normalizedQuery.includes(
+        "select id, channel, label, account_handle, access_token_secret_key, refresh_token_secret_key, created_at, updated_at",
+      )
+    ) {
+      return Array.from(this.state.channelConnections.values())
+        .sort(
+          (left, right) =>
+            left.channel.localeCompare(right.channel) ||
+            left.label.localeCompare(right.label) ||
+            left.createdAt.localeCompare(right.createdAt),
+        )
+        .map((entry) => ({
+          id: entry.id,
+          channel: entry.channel,
+          label: entry.label,
+          account_handle: entry.accountHandle,
+          access_token_secret_key: entry.accessTokenSecretKey,
+          refresh_token_secret_key: entry.refreshTokenSecretKey,
+          created_at: entry.createdAt,
+          updated_at: entry.updatedAt,
+        }));
+    }
+
+    if (this.normalizedQuery.includes("from channel_connections where channel = ? and account_handle = ? collate nocase")) {
+      const [channel, accountHandle] = this.bindings as [string, string];
+      const connection = Array.from(this.state.channelConnections.values()).find(
+        (candidate) => candidate.channel === channel && candidate.accountHandle.toLocaleLowerCase() === accountHandle.toLocaleLowerCase(),
+      );
+
+      return connection
+        ? [
+            {
+              id: connection.id,
             },
           ]
         : [];

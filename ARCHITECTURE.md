@@ -10,6 +10,7 @@ Use this file for global constraints. Use feature specs under `specs/` for domai
 - Keep the scheduler domain model intentionally abstract until a concrete adapter or workflow needs a stronger schema.
 - Keep demo-only surfaces isolated from the normal authenticated routes and available only in local development.
 - Persist operator-defined posting schedules in D1 `app_state` as Cloudflare-cron-compatible data instead of inventing a separate scheduler config store too early.
+- Store channel connection metadata in dedicated D1 rows and store adapter credentials only as encrypted `app_secrets` values.
 - Treat repo documentation as living context that should evolve with the code.
 - Treat architectural decisions as explicit records, not implicit tribal knowledge.
 - Add or update an ADR in `docs/adrs/` whenever a change introduces or changes a lasting architectural constraint, selects between credible architectural alternatives, or replaces an earlier decision.
@@ -23,6 +24,7 @@ Use this file for global constraints. Use feature specs under `specs/` for domai
 - D1 is the baseline persistence layer for local auth and generic app state.
 - The app must not pretend it can rewrite deployed Wrangler Cron Triggers at runtime; deployment config and saved schedule state stay explicit and separate.
 - Session signing secrets stay in `.dev.vars` and must not be committed or copied into D1 backups.
+- `APP_ENCRYPTION_SECRET` should stay in `.dev.vars` or the deployed secret manager and must not be stored in D1 or copied into R2 backups.
 - Optional scheduled backups write application snapshots to R2 and should be treated as sensitive operational data.
 - The verification baseline is split into a fast gate and a browser gate so quick checks can return earlier without dropping full coverage.
 - Formatting, type checking, unit tests, and end-to-end tests are part of the baseline quality gate.

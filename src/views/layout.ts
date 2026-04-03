@@ -5,7 +5,7 @@ export interface SessionUser {
   role: string;
 }
 
-export type WorkspacePath = "/" | "/compose" | "/history" | "/demo";
+export type WorkspacePath = "/" | "/compose" | "/history" | "/settings" | "/demo";
 
 interface WorkspacePageOptions {
   activePath: WorkspacePath;

@@ -13,14 +13,16 @@ export async function runAutomatedBackup(
   },
 ): Promise<AutomatedBackupResult> {
   const timestamp = options.timestamp || new Date();
-  const { authUsers, stateEntries } = await collectBackupData(db);
+  const { authUsers, stateEntries, channelConnections, appSecrets } = await collectBackupData(db);
   const exportedAt = timestamp.toISOString();
   const dataExport: SchedulerDataExport = {
     app: "social-media-scheduler",
-    schemaVersion: 1,
+    schemaVersion: 2,
     exportedAt,
     authUsers,
     stateEntries,
+    channelConnections,
+    appSecrets,
   };
   const contentHash = await createDataExportContentHash(dataExport);
   const normalizedPrefix = normalizeBackupPrefix(options.backupPrefix);
@@ -53,6 +55,8 @@ export async function runAutomatedBackup(
     counts: {
       authUsers: authUsers.length,
       stateEntries: stateEntries.length,
+      channelConnections: channelConnections.length,
+      appSecrets: appSecrets.length,
     },
     artifacts: {
       jsonExportKey,
@@ -67,6 +71,8 @@ export async function runAutomatedBackup(
     contentHash: manifest.contentHash,
     authUsers: String(manifest.counts.authUsers),
     stateEntries: String(manifest.counts.stateEntries),
+    channelConnections: String(manifest.counts.channelConnections),
+    appSecrets: String(manifest.counts.appSecrets),
   };
 
   await Promise.all([
@@ -122,6 +128,14 @@ function createBackupSummary(dataExport: SchedulerDataExport): string {
     dataExport.authUsers.length > 0 ? dataExport.authUsers.map((user) => `- ${user.name} (${user.role})`).join("\n") : "- No auth users";
   const stateEntriesSection =
     dataExport.stateEntries.length > 0 ? dataExport.stateEntries.map((entry) => `- ${entry.key}`).join("\n") : "- No app state entries";
+  const channelConnectionsSection =
+    dataExport.channelConnections.length > 0
+      ? dataExport.channelConnections
+          .map((connection) => `- ${connection.label} (${connection.channel}: ${connection.accountHandle})`)
+          .join("\n")
+      : "- No channel connections";
+  const appSecretsSection =
+    dataExport.appSecrets.length > 0 ? dataExport.appSecrets.map((secret) => `- ${secret.key}`).join("\n") : "- No encrypted secrets";
 
   return `# Social Media Scheduler Backup Summary
 
@@ -131,6 +145,8 @@ Generated at: ${dataExport.exportedAt}
 
 - Auth users: ${dataExport.authUsers.length}
 - App state entries: ${dataExport.stateEntries.length}
+- Channel connections: ${dataExport.channelConnections.length}
+- Encrypted secrets: ${dataExport.appSecrets.length}
 
 ## Auth Users
 
@@ -139,6 +155,14 @@ ${authUsersSection}
 ## App State Keys
 
 ${stateEntriesSection}
+
+## Channel Connections
+
+${channelConnectionsSection}
+
+## Secret Keys
+
+${appSecretsSection}
 `;
 }
 

@@ -52,12 +52,30 @@ export interface BackupStateEntry {
   valueJson: string;
 }
 
+export interface BackupChannelConnection {
+  accountHandle: string;
+  channel: "linkedin" | "x" | "bluesky";
+  createdAt: string;
+  hasRefreshToken: boolean;
+  id: string;
+  label: string;
+  updatedAt: string;
+}
+
+export interface BackupAppSecret {
+  encryptedValue: string;
+  key: string;
+  updatedAt: string;
+}
+
 export interface SchedulerDataExport {
   app: "social-media-scheduler";
-  schemaVersion: 1;
+  schemaVersion: 2;
   exportedAt: string;
   authUsers: BackupAuthUser[];
   stateEntries: BackupStateEntry[];
+  channelConnections: BackupChannelConnection[];
+  appSecrets: BackupAppSecret[];
 }
 
 export interface AutomatedBackupManifest {
@@ -69,6 +87,8 @@ export interface AutomatedBackupManifest {
   counts: {
     authUsers: number;
     stateEntries: number;
+    channelConnections: number;
+    appSecrets: number;
   };
   artifacts: {
     jsonExportKey: string;

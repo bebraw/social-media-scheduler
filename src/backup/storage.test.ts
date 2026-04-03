@@ -53,10 +53,12 @@ describe("backup storage", () => {
       "automated-backups/2026/03/31/one/scheduler-export.json",
       JSON.stringify({
         app: "social-media-scheduler",
-        schemaVersion: 1,
+        schemaVersion: 2,
         exportedAt: "2026-03-31T10:15:00.000Z",
         authUsers: [],
         stateEntries: [],
+        channelConnections: [],
+        appSecrets: [],
       }),
     );
 

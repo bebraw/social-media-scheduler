@@ -1,23 +1,25 @@
+import type { ChannelConnection } from "../channels";
 import { renderPill } from "./components";
 import type { SentPostHistoryEntry } from "../history";
 import type { QueueChannel } from "../queue/constraints";
 import { escapeHtml } from "./shared";
 
-export function renderHistoryFilters(sentHistory: SentPostHistoryEntry[]): string {
-  return [
+export function renderHistoryFilters(connections: ChannelConnection[], sentHistory: SentPostHistoryEntry[]): string {
+  const filters = [
     { id: "all", label: "All channels", count: sentHistory.length },
-    ...(
-      [
-        { id: "linkedin", label: "LinkedIn" },
-        { id: "x", label: "X" },
-        { id: "bluesky", label: "Bluesky" },
-      ] as const
-    ).map((channel) => ({
-      id: channel.id,
-      label: channel.label,
-      count: sentHistory.filter((entry) => entry.channel === channel.id).length,
+    ...connections.map((connection) => ({
+      id: buildConnectionFilterId(connection.id),
+      label: connection.label,
+      count: sentHistory.filter((entry) => entry.connectionId === connection.id).length,
     })),
-  ]
+    ...listLegacyHistoryChannels(connections, sentHistory).map((channel) => ({
+      id: buildLegacyChannelFilterId(channel),
+      label: formatChannelLabel(channel),
+      count: sentHistory.filter((entry) => !entry.connectionId && entry.channel === channel).length,
+    })),
+  ];
+
+  return filters
     .map(
       (filter, index) => `<button class="${buildHistoryFilterClass(index === 0)}" type="button" aria-pressed="${
         index === 0 ? "true" : "false"
@@ -32,13 +34,14 @@ export function renderHistoryFilters(sentHistory: SentPostHistoryEntry[]): strin
 export function renderHistoryCards(sentHistory: SentPostHistoryEntry[]): string {
   return sentHistory
     .map(
-      (entry) => `<article class="rounded-xl border border-app-line bg-white p-5" data-history-card data-history-channel="${escapeHtml(
-        entry.channel,
+      (entry) => `<article class="rounded-xl border border-app-line bg-white p-5" data-history-card data-history-filter-key="${escapeHtml(
+        resolveHistoryFilterKey(entry),
       )}">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div class="flex flex-wrap items-center gap-2">
               ${renderPill(formatChannelLabel(entry.channel), { tone: "quiet-accent" })}
+              ${entry.connectionLabel ? renderPill(entry.connectionLabel) : ""}
               <span class="text-xs font-medium uppercase tracking-[0.12em] text-app-text-soft">${escapeHtml(entry.project)}</span>
             </div>
             <p class="mt-3 max-w-2xl text-sm leading-6 text-app-text">${escapeHtml(entry.body)}</p>
@@ -57,6 +60,32 @@ export function formatChannelLabel(channel: QueueChannel): string {
   if (channel === "linkedin") return "LinkedIn";
   if (channel === "x") return "X";
   return "Bluesky";
+}
+
+function resolveHistoryFilterKey(entry: SentPostHistoryEntry): string {
+  return entry.connectionId ? buildConnectionFilterId(entry.connectionId) : buildLegacyChannelFilterId(entry.channel);
+}
+
+function listLegacyHistoryChannels(connections: ChannelConnection[], sentHistory: SentPostHistoryEntry[]): QueueChannel[] {
+  const configuredProviders = new Set(connections.map((connection) => connection.channel));
+  const legacyProviders = new Set<QueueChannel>();
+
+  for (const entry of sentHistory) {
+    if (!entry.connectionId && !configuredProviders.has(entry.channel)) {
+      legacyProviders.add(entry.channel);
+    }
+  }
+
+  const orderedProviders: QueueChannel[] = ["linkedin", "x", "bluesky"];
+  return orderedProviders.filter((channel) => legacyProviders.has(channel));
+}
+
+function buildConnectionFilterId(connectionId: string): string {
+  return `connection:${connectionId}`;
+}
+
+function buildLegacyChannelFilterId(channel: QueueChannel): string {
+  return `channel:${channel}`;
 }
 
 function buildHistoryFilterClass(isActive: boolean): string {

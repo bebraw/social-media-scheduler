@@ -7,6 +7,7 @@ This project can create automated backups when it is deployed on Cloudflare with
 Each scheduled run compares the latest stored backup against a stable hash of the current export content. When the exported data has changed, the Worker writes three files into the configured R2 bucket:
 
 - a full JSON export containing auth users and generic `app_state` entries
+- channel connection metadata plus encrypted `app_secrets` entries
 - a Markdown summary report with counts and key names
 - a manifest file with counts, the cron expression, and the generated object keys
 
@@ -20,7 +21,7 @@ automated-backups/YYYY/MM/DD/TIMESTAMP/
 
 ## Security Notes
 
-These backups include password hashes from `app_users`. They do not include plaintext passwords or `.dev.vars` secrets, but they should still be treated as sensitive operational data:
+These backups include password hashes from `app_users` plus encrypted channel credentials from `app_secrets`. They do not include plaintext passwords or `.dev.vars` secrets, but they should still be treated as sensitive operational data:
 
 - keep the R2 bucket private
 - do not share backup downloads casually
@@ -74,7 +75,7 @@ If the `BACKUP_BUCKET` binding is configured, the run will write backup artifact
 There is no in-app restore surface yet. For now, restore is an operator task:
 
 1. Download the JSON export from R2
-2. Inspect the auth users and app state entries you want to restore
+2. Inspect the auth users, channel connections, encrypted secrets, and app state entries you want to restore
 3. Recreate those rows into D1 with deliberate SQL or a future import tool
 
 That keeps the current implementation lightweight while still preserving recoverable state for future scheduler features.

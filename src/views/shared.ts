@@ -44,11 +44,15 @@ export function redirectResponse(location: string, init: ResponseInit = {}): Res
   });
 }
 
-export function renderWorkspaceNav(options: { activePath: "/" | "/compose" | "/history" | "/demo"; demoAvailable?: boolean }): string {
-  const links: Array<{ href: "/" | "/compose" | "/history" | "/demo"; label: string }> = [
+export function renderWorkspaceNav(options: {
+  activePath: "/" | "/compose" | "/history" | "/settings" | "/demo";
+  demoAvailable?: boolean;
+}): string {
+  const links: Array<{ href: "/" | "/compose" | "/history" | "/settings" | "/demo"; label: string }> = [
     { href: "/", label: "Queue" },
     { href: "/compose", label: "Compose" },
     { href: "/history", label: "History" },
+    { href: "/settings", label: "Settings" },
   ];
   if (options.demoAvailable) {
     links.push({ href: "/demo", label: "Demo mode" });

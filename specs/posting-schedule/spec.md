@@ -10,7 +10,7 @@ Operators need to adjust that cadence per channel before the real publishing ada
 
 ### Architecture
 
-- **Entry points:** authenticated `GET /` renders the schedule editor and authenticated `POST /posting-schedule` persists updates.
+- **Entry points:** authenticated `GET /` renders the schedule editor for configured providers and authenticated `POST /posting-schedule` persists updates.
 - **Source layout:** `src/schedule/` owns the per-channel schedule model, D1 `app_state` persistence, and Cloudflare cron mapping. `src/views/posting-schedule.ts` renders the editor used on the Queue page.
 - **Data model:** D1 `app_state` stores one `posting_schedules_v1` entry containing per-channel Cloudflare-cron-compatible expressions. The UI derives weekday and UTC time controls from that stored form.
 - **Deployment boundary:** saved schedules do not mutate `wrangler.jsonc` or deployed Cron Triggers automatically. Operators must sync the saved cron expressions into deployment config separately.
@@ -25,7 +25,7 @@ Operators need to adjust that cadence per channel before the real publishing ada
 
 ### Definition of Done
 
-- [ ] The Queue page shows one editable schedule card for LinkedIn, X, and Bluesky.
+- [ ] The Queue page shows one editable schedule card for each currently configured provider.
 - [ ] Each schedule card exposes weekday selection, a UTC time input, and the derived Cloudflare cron expression.
 - [ ] Saving the form stores the per-channel schedule in D1 `app_state`.
 - [ ] Readonly users can view schedules but cannot update them.
@@ -38,6 +38,7 @@ Operators need to adjust that cadence per channel before the real publishing ada
 - Missing or invalid stored schedule state must fall back to the checked-in default schedule set.
 - Every editable channel must keep at least one selected weekday and a valid `HH:MM` UTC time.
 - Queue route auth rules must apply to posting schedule edits too.
+- The queue page must not render schedule cards for providers that are not currently configured in Settings.
 - Health output must continue to list the posting schedule endpoint for tooling visibility.
 
 ### Verification
@@ -51,7 +52,7 @@ Operators need to adjust that cadence per channel before the real publishing ada
 
 - Given: the operator is already authenticated
 - When: they open `/`
-- Then: they see each channel's selected weekdays, UTC time, and derived Cloudflare cron expression
+- Then: they see each configured provider's selected weekdays, UTC time, and derived Cloudflare cron expression
 
 **Scenario: Operator saves a new channel cadence**
 

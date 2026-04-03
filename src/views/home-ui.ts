@@ -103,12 +103,14 @@ for (const column of channelColumns) {
     continue;
   }
 
-  const channel = column.getAttribute("data-channel-id") || "";
   const limit = Number(column.getAttribute("data-channel-limit") || "0");
   const queueMode = queueButton instanceof HTMLElement ? queueButton.getAttribute("data-queue-mode") || "client" : "client";
+  const channelKind = column.getAttribute("data-channel-kind") || "";
+  const channelLabel = column.getAttribute("data-channel-label") || channelLabelFromKind(channelKind);
+  const accountHandle = column.getAttribute("data-channel-account-handle") || "";
 
   const renderUsage = () => {
-    const usage = describeUsage(channel, textarea.value, limit);
+    const usage = describeUsage(channelKind, textarea.value, limit);
     counter.textContent = usage.label;
     statusBadge.textContent = usage.stateLabel;
     statusBadge.dataset.state = usage.state;
@@ -130,7 +132,7 @@ for (const column of channelColumns) {
       return;
     }
 
-    const usage = describeUsage(channel, textarea.value, limit);
+    const usage = describeUsage(channelKind, textarea.value, limit);
     if (usage.state === "over") {
       renderUsage();
       return;
@@ -149,7 +151,8 @@ for (const column of channelColumns) {
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div class="flex flex-wrap items-center gap-2">
-            <span class="rounded-full bg-app-canvas px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-app-accent-strong">\${escapeHtml(channelLabel(channel))}</span>
+            <span class="rounded-full bg-app-canvas px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-app-accent-strong">\${escapeHtml(channelLabel)}</span>
+            \${accountHandle ? \`<span class="text-xs font-medium uppercase tracking-[0.12em] text-app-text-soft">\${escapeHtml(accountHandle)}</span>\` : ""}
             <span class="text-xs font-medium uppercase tracking-[0.12em] text-app-text-soft">Queued from draft</span>
           </div>
           <p class="mt-3 max-w-2xl text-sm leading-6 text-app-text">\${escapeHtml(content)}</p>
@@ -245,7 +248,7 @@ function isWideCodePoint(codePoint) {
   );
 }
 
-function channelLabel(channel) {
+function channelLabelFromKind(channel) {
   if (channel === "linkedin") return "LinkedIn";
   if (channel === "x") return "X";
   return "Bluesky";
@@ -316,7 +319,7 @@ function setupHistoryFilters() {
         continue;
       }
 
-      const matches = filterValue === "all" || card.getAttribute("data-history-channel") === filterValue;
+      const matches = filterValue === "all" || card.getAttribute("data-history-filter-key") === filterValue;
       card.hidden = !matches;
       if (matches) {
         visibleCount += 1;

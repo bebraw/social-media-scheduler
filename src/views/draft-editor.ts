@@ -1,12 +1,16 @@
-import { CHANNEL_CONSTRAINTS, describeUsage, type ChannelConstraint, type QueueChannel } from "../queue/constraints";
+import type { ChannelConnection } from "../channels";
 import type { DemoDraft } from "../demo";
+import { CHANNEL_CONSTRAINTS, describeUsage, type ChannelConstraint, type QueueChannel } from "../queue/constraints";
 import { renderButton } from "./components";
 import { escapeHtml, renderAttachmentComposer } from "./shared";
 
 export interface ComposerDraft {
+  accountHandle: string;
   accent: string;
+  channel: QueueChannel;
   content: string;
-  id: QueueChannel;
+  id: string;
+  label: string;
   placeholder: string;
   slot: string;
   subtitle: string;
@@ -15,9 +19,12 @@ export interface ComposerDraft {
 interface DraftEntry {
   constraint: ChannelConstraint;
   draft: {
+    accountHandle: string;
     accent: string;
     content: string;
-    id: QueueChannel;
+    channel: QueueChannel;
+    id: string;
+    label: string;
     placeholder?: string;
     slot: string;
     subtitle: string;
@@ -25,47 +32,47 @@ interface DraftEntry {
   usage: ReturnType<typeof describeUsage>;
 }
 
-export function getDefaultComposerDrafts(): ComposerDraft[] {
-  return [
-    {
-      id: "linkedin",
-      subtitle: "Longer project update",
-      accent: "Professional update",
+export function buildComposerDrafts(connections: ChannelConnection[]): ComposerDraft[] {
+  return connections.map((connection) => {
+    const constraint = CHANNEL_CONSTRAINTS.find((item) => item.id === connection.channel)!;
+
+    return {
+      accountHandle: connection.accountHandle,
+      accent: constraint.name,
+      channel: connection.channel,
       content: "",
-      placeholder: "Write the next LinkedIn update for this project.",
+      id: connection.id,
+      label: connection.label,
+      placeholder: `Write the next ${constraint.name} post for ${connection.label}.`,
       slot: "Next available slot",
-    },
-    {
-      id: "x",
-      subtitle: "Short post with tighter budget",
-      accent: "Tight summary",
-      content: "",
-      placeholder: "Write the next X post.",
-      slot: "Next available slot",
-    },
-    {
-      id: "bluesky",
-      subtitle: "Short post with room for voice",
-      accent: "Concise status post",
-      content: "",
-      placeholder: "Write the next Bluesky post.",
-      slot: "Next available slot",
-    },
-  ];
+      subtitle: connection.accountHandle,
+    };
+  });
 }
 
 export function resolveDraftEntries(drafts: Array<ComposerDraft | DemoDraft>): DraftEntry[] {
   return drafts.flatMap((draft) => {
-    const constraint = CHANNEL_CONSTRAINTS.find((item) => item.id === draft.id);
+    const channel = "channel" in draft ? draft.channel : draft.id;
+    const constraint = CHANNEL_CONSTRAINTS.find((item) => item.id === channel);
     if (!constraint) {
       return [];
     }
 
     return [
       {
-        draft,
+        draft: {
+          accountHandle: "accountHandle" in draft ? draft.accountHandle : "",
+          accent: draft.accent,
+          channel,
+          content: draft.content,
+          id: draft.id,
+          label: "label" in draft ? draft.label : constraint.name,
+          placeholder: "placeholder" in draft ? draft.placeholder : undefined,
+          slot: draft.slot,
+          subtitle: draft.subtitle,
+        },
         constraint,
-        usage: describeUsage(draft.id, draft.content),
+        usage: describeUsage(channel, draft.content),
       },
     ];
   });
@@ -82,7 +89,12 @@ export function renderDraftTabs(entries: DraftEntry[], idPrefix: string): string
         draft.id,
       )}" tabindex="${isSelected ? "0" : "-1"}" data-channel-tab data-channel-id="${escapeHtml(draft.id)}">
         <span class="${buildTabAccentClass(isSelected)}">${escapeHtml(draft.accent)}</span>
-        <span class="mt-2 block text-base tracking-[-0.02em]">${escapeHtml(constraint.name)}</span>
+        <span class="mt-2 block text-base tracking-[-0.02em]">${escapeHtml(draft.label)}</span>
+        ${
+          draft.accountHandle
+            ? `<span class="mt-1 block text-xs font-medium ${isSelected ? "text-white/70" : "text-app-text-soft"}">${escapeHtml(draft.accountHandle)}</span>`
+            : ""
+        }
       </button>`;
     })
     .join("");
@@ -96,7 +108,7 @@ export function renderComposeDraftPanels(entries: DraftEntry[]): string {
       return renderDraftPanel({
         constraint,
         draft,
-        editorLabel: `${constraint.name} post copy`,
+        editorLabel: `${draft.label} post copy`,
         panelIdPrefix: "draft",
         selected: isSelected,
         sideContent: `${renderConstraintCard(constraint.limitLabel, usage.label)}
@@ -104,8 +116,8 @@ export function renderComposeDraftPanels(entries: DraftEntry[]): string {
             <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Channel note</p>
             <p class="mt-2 text-sm leading-6 text-app-text-soft">${escapeHtml(constraint.notes)}</p>
           </div>
-          ${renderAttachmentComposer({ channelName: constraint.name, serverMode: false })}
-          ${renderSlotSelector(constraint.name, draft.slot)}
+          ${renderAttachmentComposer({ channelName: draft.label, serverMode: false })}
+          ${renderSlotSelector(draft.label, draft.slot)}
           <div class="flex flex-wrap gap-3 pt-2">
             ${renderButton({ attributes: 'data-queue-button data-queue-mode="client"', label: "Queue post", variant: "primary" })}
             ${renderButton({ className: "bg-white hover:bg-app-canvas", label: "Save draft" })}
@@ -129,7 +141,7 @@ export function renderDemoDraftPanels(entries: DraftEntry[]): string {
           <input type="hidden" name="channel" value="${escapeHtml(draft.id)}">`,
         constraint,
         draft,
-        editorAriaLabel: `${constraint.name} post copy`,
+        editorAriaLabel: `${draft.label} post copy`,
         editorLabel: `${constraint.name} demo post`,
         inputName: "body",
         panelIdPrefix: "demo",
@@ -220,13 +232,15 @@ function renderDraftPanel(options: {
     panelIdPrefix,
   )}-panel-${escapeHtml(draft.id)}" aria-labelledby="${escapeHtml(panelIdPrefix)}-tab-${escapeHtml(draft.id)}" ${
     selected ? "" : "hidden"
-  } data-channel-column data-channel-id="${escapeHtml(draft.id)}" data-channel-limit="${constraint.limit}">
+  } data-channel-column data-channel-id="${escapeHtml(draft.id)}" data-channel-kind="${escapeHtml(draft.channel)}" data-channel-label="${escapeHtml(
+    draft.label,
+  )}" data-channel-account-handle="${escapeHtml(draft.accountHandle)}" data-channel-limit="${constraint.limit}">
         ${beforeEditor}
         <div class="min-w-0">
           <div class="flex items-start justify-between gap-3">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">${escapeHtml(draft.accent)}</p>
-              <h3 class="mt-2 text-xl font-semibold tracking-[-0.03em]">${escapeHtml(constraint.name)}</h3>
+              <h3 class="mt-2 text-xl font-semibold tracking-[-0.03em]">${escapeHtml(draft.label)}</h3>
               <p class="mt-1 max-w-2xl text-sm leading-6 text-app-text-soft">${escapeHtml(draft.subtitle)}</p>
             </div>
             <span class="${statusClass}" data-channel-status>${escapeHtml(statusLabel)}</span>

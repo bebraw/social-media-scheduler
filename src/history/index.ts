@@ -4,6 +4,8 @@ import type { QueueChannel } from "../queue/constraints";
 const SENT_POST_HISTORY_STATE_KEY = "sent_post_history_v1";
 
 export interface SentPostHistoryEntry {
+  connectionId?: string;
+  connectionLabel?: string;
   id: string;
   channel: QueueChannel;
   project: string;
@@ -53,6 +55,8 @@ function parseSentPostHistoryEntry(value: unknown): SentPostHistoryEntry | null 
   }
 
   return {
+    connectionId: typeof candidate.connectionId === "string" ? candidate.connectionId : undefined,
+    connectionLabel: typeof candidate.connectionLabel === "string" ? candidate.connectionLabel : undefined,
     id: candidate.id,
     channel: candidate.channel,
     project: candidate.project,

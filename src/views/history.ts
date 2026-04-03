@@ -1,3 +1,4 @@
+import type { ChannelConnection } from "../channels";
 import type { SentPostHistoryEntry } from "../history";
 import { renderPanel } from "./components";
 import { HOME_PAGE_SCRIPT } from "./home-ui";
@@ -8,12 +9,13 @@ const pageTitle = "History";
 const pageDescription = "Review previously sent posts by channel.";
 
 interface HistoryPageOptions {
+  connections: ChannelConnection[];
   demoAvailable: boolean;
   sentHistory: SentPostHistoryEntry[];
   user: SessionUser;
 }
 
-export function renderHistoryPage({ demoAvailable, sentHistory, user }: HistoryPageOptions): string {
+export function renderHistoryPage({ connections, demoAvailable, sentHistory, user }: HistoryPageOptions): string {
   return renderWorkspacePage({
     activePath: "/history",
     content: `<div class="grid gap-4 px-5 py-5 sm:px-8 sm:py-8">
@@ -21,13 +23,17 @@ export function renderHistoryPage({ demoAvailable, sentHistory, user }: HistoryP
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 class="text-lg font-semibold tracking-[-0.02em]">Channel history</h2>
-            <p class="mt-1 max-w-2xl text-sm leading-6 text-app-text-soft">Filter sent posts by channel.</p>
-          </div>
-          <p class="text-sm font-medium text-app-text-soft"><span data-history-count>${sentHistory.length}</span> posts shown</p>
+          <p class="mt-1 max-w-2xl text-sm leading-6 text-app-text-soft">Filter sent posts by channel.</p>
         </div>
-        <div class="mt-5 flex flex-wrap gap-2" aria-label="History filters">
-          ${renderHistoryFilters(sentHistory)}
-        </div>
+        <p class="text-sm font-medium text-app-text-soft"><span data-history-count>${sentHistory.length}</span> posts shown</p>
+      </div>
+        ${
+          connections.length > 0 || sentHistory.length > 0
+            ? `<div class="mt-5 flex flex-wrap gap-2" aria-label="History filters">
+          ${renderHistoryFilters(connections, sentHistory)}
+        </div>`
+            : '<p class="mt-5 rounded-xl border border-dashed border-app-line bg-app-canvas/50 px-4 py-3 text-sm text-app-text-soft">No channel connections are configured yet. Add channels in Settings before you expect account-specific history here.</p>'
+        }
         <div class="mt-5 grid gap-3" data-sent-history-list>${renderHistoryCards(sentHistory)}</div>
         <p class="mt-4${sentHistory.length === 0 ? "" : " hidden"} rounded-xl border border-dashed border-app-line bg-app-canvas/50 px-4 py-3 text-sm text-app-text-soft" data-history-empty>No sent posts are available yet.</p>
       `)}
