@@ -1,6 +1,13 @@
 import type { D1Database } from "../db-core";
 import { collectBackupData, createDataExportContentHash } from "./data";
-import { BACKUP_MANIFEST_FILENAME, buildAutomatedBackupPrefix, findLatestStoredBackup, normalizeBackupPrefix } from "./storage";
+import {
+  BACKUP_MANIFEST_FILENAME,
+  buildAutomatedBackupPrefix,
+  findLatestStoredBackup,
+  normalizeBackupPrefix,
+  normalizeBackupRetentionDays,
+  pruneStoredBackups,
+} from "./storage";
 import type { AutomatedBackupManifest, AutomatedBackupResult, R2BucketLike, SchedulerDataExport } from "./types";
 
 export async function runAutomatedBackup(
@@ -9,6 +16,7 @@ export async function runAutomatedBackup(
   options: {
     backupPrefix?: string | null;
     cron: string;
+    retentionDays?: number | null;
     timestamp?: Date;
   },
 ): Promise<AutomatedBackupResult> {
@@ -26,10 +34,17 @@ export async function runAutomatedBackup(
   };
   const contentHash = await createDataExportContentHash(dataExport);
   const normalizedPrefix = normalizeBackupPrefix(options.backupPrefix);
+  const retentionDays = normalizeBackupRetentionDays(options.retentionDays);
   const latestStoredBackup = await findLatestStoredBackup(bucket, normalizedPrefix);
 
   if (latestStoredBackup?.contentHash === contentHash) {
+    const deletedObjectKeys = await pruneStoredBackups(bucket, normalizedPrefix, {
+      now: timestamp,
+      retentionDays,
+    });
+
     return {
+      deletedObjectCount: deletedObjectKeys.length,
       skipped: true,
       contentHash,
       manifest: null,
@@ -102,7 +117,13 @@ export async function runAutomatedBackup(
     customMetadata,
   });
 
+  const deletedObjectKeys = await pruneStoredBackups(bucket, normalizedPrefix, {
+    now: timestamp,
+    retentionDays,
+  });
+
   return {
+    deletedObjectCount: deletedObjectKeys.length,
     skipped: false,
     contentHash,
     manifest,
@@ -167,6 +188,7 @@ ${appSecretsSection}
 }
 
 export { normalizeBackupPrefix } from "./storage";
+export { normalizeBackupRetentionDays } from "./storage";
 export type {
   AutomatedBackupManifest,
   AutomatedBackupResult,

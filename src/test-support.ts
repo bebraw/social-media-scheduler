@@ -450,6 +450,13 @@ export class TestR2Bucket implements R2BucketLike {
     });
   }
 
+  async delete(keys: string | string[]): Promise<void> {
+    const keyList = Array.isArray(keys) ? keys : [keys];
+    for (const key of keyList) {
+      this.objects.delete(key);
+    }
+  }
+
   async list(options?: R2ListOptions): Promise<R2ListResult> {
     const prefix = options?.prefix || "";
     const objects = Array.from(this.objects.keys())
@@ -483,6 +490,7 @@ export function createTestEnv(overrides: Partial<Env> = {}): Env {
   return {
     DB: createTestDatabase(),
     BACKUP_PREFIX: "automated-backups",
+    BACKUP_RETENTION_DAYS: "90",
     SESSION_SECRET: "test-session-secret",
     ...overrides,
   };

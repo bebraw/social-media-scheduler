@@ -101,6 +101,7 @@ The checked-in [`wrangler.jsonc`](../wrangler.jsonc) already includes:
 - fixed publishing poll cron `*/15 * * * *`
 - daily cron `30 1 * * *`
 - `BACKUP_PREFIX=automated-backups`
+- default backup retention `BACKUP_RETENTION_DAYS=90`
 
 If you want different names or retention rules, adjust the binding and update the corresponding docs in the same change set.
 

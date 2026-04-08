@@ -5,6 +5,7 @@ export interface Env {
   DB?: D1Database;
   BACKUP_BUCKET?: R2BucketLike;
   BACKUP_PREFIX?: string;
+  BACKUP_RETENTION_DAYS?: string;
   APP_ENCRYPTION_SECRET?: string;
   E2E_SEEDED_STATE_ONLY?: string;
   MEDIA_BUCKET?: R2BucketLike;

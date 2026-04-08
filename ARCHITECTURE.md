@@ -27,9 +27,11 @@ Use this file for global constraints. Use feature specs under `specs/` for domai
 - The Worker runtime must keep Cloudflare `nodejs_compat` enabled because the selected social-provider SDKs rely on Node built-ins such as `crypto`.
 - The Worker uses fixed deployment-managed cron triggers for a publishing poll and daily backup window; saved posting schedules drive runtime behavior inside that fixed poller instead of rewriting deployed triggers.
 - The app must not pretend it can rewrite deployed Wrangler Cron Triggers at runtime; deployment config stays explicit even when saved schedule state drives publish decisions inside the running Worker.
+- Backup restore remains an operator-controlled workflow through export artifacts and local tooling rather than an authenticated browser admin surface.
 - Session signing secrets stay in `.dev.vars` and must not be committed or copied into D1 backups.
 - `APP_ENCRYPTION_SECRET` should stay in `.dev.vars` or the deployed secret manager and must not be stored in D1 or copied into R2 backups.
 - Optional scheduled backups write application snapshots to R2 and should be treated as sensitive operational data.
+- Automated backup retention should be governed by explicit configuration instead of unbounded object growth.
 - The verification baseline is split into a fast gate and a browser gate so quick checks can return earlier without dropping full coverage.
 - Formatting, type checking, unit tests, and end-to-end tests are part of the baseline quality gate.
 - Unit coverage for `src/` code should stay high enough that the coverage gate remains green.

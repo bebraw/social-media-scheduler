@@ -19,6 +19,8 @@ By default the files are stored under:
 automated-backups/YYYY/MM/DD/TIMESTAMP/
 ```
 
+By default the Worker also prunes automated backup artifacts older than 90 days. Override that window with `BACKUP_RETENTION_DAYS`, or set it to `0` to disable pruning explicitly.
+
 ## Security Notes
 
 These backups include password hashes from `app_users` plus encrypted channel credentials from `app_secrets`. They do not include plaintext passwords or `.dev.vars` secrets, but they should still be treated as sensitive operational data:
@@ -54,6 +56,14 @@ npx wrangler r2 bucket create social-media-scheduler-backups
 
 The default cron runs every day at `01:30 UTC`. Adjust it if another off-peak window fits your usage better.
 
+Retention is controlled through the Worker environment:
+
+```env
+BACKUP_RETENTION_DAYS=90
+```
+
+Set `BACKUP_RETENTION_DAYS=0` if you intentionally want to disable Worker-managed pruning and rely on an external lifecycle policy instead.
+
 ## Testing The Backup Locally
 
 Wrangler can expose scheduled handlers in local development:
@@ -72,18 +82,34 @@ If the `BACKUP_BUCKET` binding is configured, the run will write backup artifact
 
 ## Restore Notes
 
-There is no in-app restore surface yet. For now, restore is an operator task:
+Restore is now an operator task supported by a first-party script instead of hand-written SQL:
 
 1. Download the JSON export from R2
-2. Inspect the auth users, channel connections, encrypted secrets, and app state entries you want to restore
-3. Recreate those rows into D1 with deliberate SQL or a future import tool
+2. Review the export locally
+3. Generate restore SQL:
 
-That keeps the current implementation lightweight while still preserving recoverable state for future scheduler features.
+```bash
+npm run backup:restore -- --file ./scheduler-export-2026-04-08.json --print-sql
+```
+
+4. Restore into local D1 when ready:
+
+```bash
+npm run backup:restore -- --file ./scheduler-export-2026-04-08.json --local
+```
+
+5. Restore into remote D1 only after you have reviewed the export and the generated SQL:
+
+```bash
+npm run backup:restore -- --file ./scheduler-export-2026-04-08.json --remote
+```
+
+By default the restore tool truncates auth users, app state, channel connections, encrypted secrets, and login attempts before replaying the export. Use `--append` if you deliberately need an additive restore instead.
 
 ## Retention
 
-R2 retention is not managed by the Worker itself. A reasonable starting point is:
+Worker-managed retention now defaults to 90 days. A reasonable production practice is still:
 
-- keep daily backups for 90 days
-- keep a smaller weekly or monthly archive longer if needed
+- keep the default 90-day rolling window unless you have a stronger policy
+- keep a separate offline archive if compliance or audit requirements demand longer retention
 - test a restore periodically instead of only checking that files exist

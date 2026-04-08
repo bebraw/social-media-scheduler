@@ -16,6 +16,7 @@
   "scripts": {
     "account:create": "node ./scripts/create-auth-user.mjs",
     "auth:create-user": "node ./scripts/create-auth-user.mjs",
+    "backup:restore": "node ./scripts/restore-backup.mjs",
     "build:css": "mkdir -p ./.generated && tailwindcss -i ./src/tailwind-input.css -o ./.generated/styles.css --minify",
     "ci:local": "agent-ci run --workflow .github/workflows/ci.yml",
     "ci:local:quiet": "agent-ci run --quiet --workflow .github/workflows/ci.yml",

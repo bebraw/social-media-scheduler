@@ -36,6 +36,7 @@ export interface R2ObjectBodyLike {
 
 export interface R2BucketLike {
   put(key: string, value: string | ArrayBuffer | ArrayBufferView, options?: R2PutOptions): Promise<unknown>;
+  delete?(keys: string | string[]): Promise<unknown>;
   list?(options?: R2ListOptions): Promise<R2ListResult>;
   get?(key: string): Promise<R2ObjectBodyLike | null>;
 }
@@ -97,6 +98,7 @@ export interface AutomatedBackupManifest {
 }
 
 export interface AutomatedBackupResult {
+  deletedObjectCount: number;
   skipped: boolean;
   contentHash: string;
   manifest: AutomatedBackupManifest | null;

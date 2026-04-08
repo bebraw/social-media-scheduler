@@ -11,7 +11,7 @@ import {
   verifyLoginCredentials,
 } from "./auth";
 import type { Env, ScheduledControllerLike } from "./app-env";
-import { runAutomatedBackup } from "./backup";
+import { normalizeBackupRetentionDays, runAutomatedBackup } from "./backup";
 import {
   ChannelConnectionValidationError,
   createChannelConnection,
@@ -507,6 +507,7 @@ async function handleScheduledTasks(controller: ScheduledControllerLike, env: En
   const result = await runAutomatedBackup(env.DB, env.BACKUP_BUCKET, {
     backupPrefix: env.BACKUP_PREFIX,
     cron: controller.cron,
+    retentionDays: normalizeBackupRetentionDays(env.BACKUP_RETENTION_DAYS),
   });
 
   if (result.skipped) {

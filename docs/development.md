@@ -70,7 +70,7 @@ The starter UI now follows the same Tailwind v4 baseline shape as `thesis-journe
 
 Auth now mirrors the lightweight setup used in `thesis-journey-tracker`: accounts live in D1, passwords are stored as PBKDF2-SHA256 hashes, session cookies are HMAC-signed with `SESSION_SECRET`, and failed logins are rate-limited per client IP and login name. Scheduler state lives in D1 `app_state`, channel connection metadata lives in `channel_connections`, and token-like credentials are encrypted before they are written into `app_secrets`.
 
-Automated backups also follow the `thesis-journey-tracker` shape: a scheduled handler writes a JSON export, a small Markdown summary, and a manifest into R2, then skips creating new artifacts when the export content hash has not changed. Those exports now include encrypted secret blobs and channel connection metadata in addition to auth users and app state.
+Automated backups also follow the `thesis-journey-tracker` shape: a scheduled handler writes a JSON export, a small Markdown summary, and a manifest into R2, then skips creating new artifacts when the export content hash has not changed. Those exports now include encrypted secret blobs and channel connection metadata in addition to auth users and app state. Backup retention is now Worker-managed through `BACKUP_RETENTION_DAYS`, and operators can restore an export through `npm run backup:restore`.
 
 The Lighthouse setup is also generic, but the Worker stub gives it a concrete local target. Use `LIGHTHOUSE_URL=http://127.0.0.1:8787 LIGHTHOUSE_SERVER_COMMAND="npm run dev" npm run lighthouse`. Reports are written to `reports/lighthouse/`.
 

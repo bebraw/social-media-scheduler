@@ -1,11 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { createTestR2Bucket } from "../test-support";
-import { buildAutomatedBackupPrefix, findLatestStoredBackup, normalizeBackupPrefix } from "./storage";
+import {
+  buildAutomatedBackupPrefix,
+  findLatestStoredBackup,
+  normalizeBackupPrefix,
+  normalizeBackupRetentionDays,
+  pruneStoredBackups,
+} from "./storage";
 
 describe("backup storage", () => {
   it("normalizes prefixes and builds dated backup paths", () => {
     expect(normalizeBackupPrefix(" /custom-prefix/ ")).toBe("custom-prefix");
     expect(normalizeBackupPrefix("")).toBe("automated-backups");
+    expect(normalizeBackupRetentionDays(undefined)).toBe(90);
+    expect(normalizeBackupRetentionDays("30")).toBe(30);
+    expect(normalizeBackupRetentionDays("0")).toBeNull();
     expect(buildAutomatedBackupPrefix(new Date("2026-03-31T10:15:00.000Z"), "custom-prefix")).toContain(
       "custom-prefix/2026/03/31/2026-03-31T10-15-00-000Z",
     );
@@ -90,5 +99,25 @@ describe("backup storage", () => {
       manifestKey: "automated-backups/2026/03/31/one/backup-manifest.json",
       contentHash: null,
     });
+  });
+
+  it("prunes stored backup artifacts outside the retention window", async () => {
+    const bucket = createTestR2Bucket();
+    await bucket.put("automated-backups/2026/01/01/2026-01-01T10-15-00-000Z/backup-manifest.json", "{}");
+    await bucket.put("automated-backups/2026/01/01/2026-01-01T10-15-00-000Z/scheduler-export.json", "{}");
+    await bucket.put("automated-backups/2026/03/31/2026-03-31T10-15-00-000Z/backup-manifest.json", "{}");
+
+    await expect(
+      pruneStoredBackups(bucket, "automated-backups", {
+        now: new Date("2026-04-01T00:00:00.000Z"),
+        retentionDays: 30,
+      }),
+    ).resolves.toEqual([
+      "automated-backups/2026/01/01/2026-01-01T10-15-00-000Z/backup-manifest.json",
+      "automated-backups/2026/01/01/2026-01-01T10-15-00-000Z/scheduler-export.json",
+    ]);
+
+    expect(bucket.objects.has("automated-backups/2026/01/01/2026-01-01T10-15-00-000Z/backup-manifest.json")).toBe(false);
+    expect(bucket.objects.has("automated-backups/2026/03/31/2026-03-31T10-15-00-000Z/backup-manifest.json")).toBe(true);
   });
 });

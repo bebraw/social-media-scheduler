@@ -47,6 +47,7 @@ describe("runAutomatedBackup", () => {
     });
 
     expect(result.skipped).toBe(false);
+    expect(result.deletedObjectCount).toBe(0);
     expect(result.manifest?.counts).toEqual({
       authUsers: 1,
       stateEntries: 1,
@@ -79,7 +80,31 @@ describe("runAutomatedBackup", () => {
     });
 
     expect(result.skipped).toBe(true);
+    expect(result.deletedObjectCount).toBe(0);
     expect(result.manifest).toBeNull();
     expect(result.matchedManifestKey).toContain("backup-manifest.json");
+  });
+
+  it("prunes outdated backup artifacts based on the configured retention window", async () => {
+    const db = createTestDatabase();
+    const bucket = createTestR2Bucket();
+
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password",
+      role: "editor",
+    });
+    await bucket.put("automated-backups/2026/01/01/2026-01-01T10-15-00-000Z/backup-manifest.json", "{}");
+    await bucket.put("automated-backups/2026/01/01/2026-01-01T10-15-00-000Z/scheduler-export.json", "{}");
+
+    const result = await runAutomatedBackup(db, bucket, {
+      backupPrefix: "automated-backups",
+      cron: "30 1 * * *",
+      retentionDays: 30,
+      timestamp: new Date("2026-04-01T10:20:00.000Z"),
+    });
+
+    expect(result.deletedObjectCount).toBe(2);
+    expect(bucket.objects.has("automated-backups/2026/01/01/2026-01-01T10-15-00-000Z/backup-manifest.json")).toBe(false);
   });
 });
