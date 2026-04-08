@@ -1,39 +1,60 @@
 # Production Roadmap
 
-This roadmap turns the current production-readiness review into an implementation sequence with reviewable slices.
+This roadmap started as a production-readiness implementation sequence. It now reflects what has landed and what still needs operator follow-through before a production push.
 
-## Phase 1: Real Publishing Runtime
+## Status
 
-Goal: move from a private scheduler foundation to a deployable scheduler that can actually publish queued posts.
+- `Completed`: roadmap and planning artifacts
+- `Completed`: real queue and scheduled publishing runtime
+- `Completed`: connection rotation and revocation
+- `Completed`: backup restore and retention improvements
+- `Remaining`: deployment configuration, live-provider validation, and production runbook rehearsal
 
-- Persist queued posts on the server instead of keeping them only in client-side page state.
-- Add authenticated queue actions for creating, reviewing, and removing queued posts.
-- Add a provider-agnostic publishing layer behind provider adapters.
-- Publish queued posts from the Worker scheduled handler and record outcomes in sent-post history.
-- Change scheduled execution so saved posting schedules drive runtime behavior instead of acting as manual documentation for Wrangler cron edits.
+## Completed Work
 
-## Phase 2: Connection Rotation And Revocation
+### Phase 1: Real Publishing Runtime
 
-Goal: make provider credentials operable in production without manual D1 surgery.
+Delivered:
 
-- Add editor-only flows to rotate stored credentials for an existing connection.
-- Add editor-only flows to revoke and delete a saved connection.
-- Ensure secret cleanup happens when a connection is deleted or replaced.
-- Keep readonly access unchanged.
+- queued posts now persist on the server instead of living only in page state
+- authenticated queue actions support create, review, and delete flows
+- provider publishing runs behind a shared internal adapter layer
+- the Worker scheduled handler publishes due queued posts and records outcomes in sent-post history
+- saved posting schedules now drive runtime behavior through the fixed publishing poll
 
-## Phase 3: Backup Operations
+### Phase 2: Connection Rotation And Revocation
 
-Goal: make backups usable as an operational control instead of a write-only artifact stream.
+Delivered:
 
-- Add an operator restore path for backup exports.
-- Add retention controls so automated backups do not grow without policy.
-- Document the production backup and restore runbook.
+- editor-only flows now rotate stored credentials for existing connections
+- editor-only flows now revoke and delete saved connections
+- secret cleanup happens when a connection is deleted or rotated
+- readonly access remains unchanged
 
-## Delivery Order
+### Phase 3: Backup Operations
 
-1. Roadmap and planning artifacts
-2. Real queue and scheduled publishing runtime
-3. Connection rotation and revocation
-4. Backup restore and retention improvements
+Delivered:
 
-Each phase should land as its own commit after the relevant verification passes.
+- backup restore now has an operator CLI path
+- automated backups now enforce a retention policy
+- the production backup and restore runbook is documented
+
+## Remaining Before Production
+
+### Deployment Configuration
+
+- replace the placeholder D1 `database_id` in `wrangler.jsonc`
+- provision and bind the production R2 backup bucket if backups are required
+- set real deployment secrets for `SESSION_SECRET` and `APP_ENCRYPTION_SECRET`
+
+### Live Validation
+
+- run one real canary publish on each provider you plan to use in production
+- verify the provider tokens and scopes you intend to rely on in production
+- rehearse one backup restore with `npm run backup:restore -- --file ... --print-sql` before treating backups as operationally ready
+
+### Final Verification
+
+- rerun `npm run quality:gate:fast`
+- rerun `npm run ci:local:quiet` on a machine with Docker access
+- perform a final deploy smoke test against the production environment
