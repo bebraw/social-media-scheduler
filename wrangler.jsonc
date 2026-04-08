@@ -3,6 +3,7 @@
   "name": "social-media-scheduler-worker",
   "main": "src/worker.ts",
   "compatibility_date": "2026-03-31",
+  "compatibility_flags": ["nodejs_compat"],
   "build": {
     "command": "npm run build:css",
     "watch_dir": "src",

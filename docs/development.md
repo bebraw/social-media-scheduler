@@ -29,6 +29,8 @@ This template is set up for the local Agent CI runner from `agent-ci.dev`.
 
 The repo pins CLI tooling in `devDependencies`, including Wrangler for Cloudflare-based experiments. Prefer invoking those tools through `npx` or repo scripts so the project version is used instead of a global install.
 
+The Worker config enables Wrangler's `nodejs_compat` compatibility flag. Keep that flag in place unless the provider SDK layer is rewritten to avoid Node built-ins, because the current Bluesky, X, and LinkedIn libraries pull in modules such as `crypto` during local development and bundling.
+
 If local CI fails with `No such image: ghcr.io/actions/actions-runner:latest`, pull that image manually and re-run the workflow.
 
 If local CI warns with `No such remote 'origin'`, add `GITHUB_REPO=owner/repo` to `.env.agent-ci` and rerun the workflow.

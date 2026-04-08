@@ -34,6 +34,7 @@ Skip an ADR for small, reversible, or purely tactical choices.
 | [ADR-016](./ADR-016-store-posting-schedules-as-cloudflare-cron.md)                  | Accepted   | Store per-channel posting schedules in app state as Cloudflare-cron-compatible expressions.     |
 | [ADR-017](./ADR-017-store-channel-connections-and-encrypted-credentials.md)         | Accepted   | Store channel connections as account-level records and encrypt token-like credentials at rest.  |
 | [ADR-018](./ADR-018-use-provider-adapters-and-library-first-social-integrations.md) | Accepted   | Use provider adapters plus library-first SDK choices for Bluesky, X, and LinkedIn integrations. |
+| [ADR-019](./ADR-019-enable-nodejs-compat-for-provider-sdks.md)                      | Accepted   | Enable Cloudflare `nodejs_compat` so the chosen provider SDK stack can resolve Node built-ins.  |
 
 ## Creating A New ADR
 

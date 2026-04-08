@@ -23,6 +23,7 @@ Use this file for global constraints. Use feature specs under `specs/` for domai
 - Local development and local CI target macOS as the supported host platform baseline.
 - Node and npm versions are pinned through `package.json`.
 - D1 is the baseline persistence layer for local auth and generic app state.
+- The Worker runtime must keep Cloudflare `nodejs_compat` enabled because the selected social-provider SDKs rely on Node built-ins such as `crypto`.
 - The app must not pretend it can rewrite deployed Wrangler Cron Triggers at runtime; deployment config and saved schedule state stay explicit and separate.
 - Session signing secrets stay in `.dev.vars` and must not be committed or copied into D1 backups.
 - `APP_ENCRYPTION_SECRET` should stay in `.dev.vars` or the deployed secret manager and must not be stored in D1 or copied into R2 backups.

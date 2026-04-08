@@ -13,7 +13,7 @@ Operators may need multiple accounts on the same provider, such as more than one
 - **Entry points:** authenticated `GET /settings` renders the connection management view and authenticated `POST /settings/channels` validates plus stores new channel connections.
 - **Source layout:** `src/channels/` owns connection validation and D1 persistence, `src/providers/` owns provider-specific connection preparation, `src/secrets/` owns encrypted `app_secrets` storage, and `src/views/settings.ts` renders the operator-facing settings UI.
 - **Data models:** D1 `channel_connections` stores readable metadata per connected account, while D1 `app_secrets` stores encrypted token-like values keyed per connection.
-- **Dependencies:** the feature depends on authenticated sessions, D1, and a configured `APP_ENCRYPTION_SECRET` or `SESSION_SECRET` fallback for encryption.
+- **Dependencies:** the feature depends on authenticated sessions, D1, a configured `APP_ENCRYPTION_SECRET` or `SESSION_SECRET` fallback for encryption, and a Worker runtime with Cloudflare `nodejs_compat` enabled because the selected provider SDKs use Node built-ins.
 
 ### Anti-Patterns
 
