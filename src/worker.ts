@@ -353,13 +353,25 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
 }
 
 async function loadStylesheet(): Promise<string> {
-  if (typeof process !== "undefined" && process.release?.name === "node") {
-    const { readFile } = await import("node:fs/promises");
-    return await readFile(new URL("../.generated/styles.css", import.meta.url), "utf8");
+  try {
+    const styles = await import("../.generated/styles.css");
+    if (typeof styles.default === "string" && styles.default.trim().length > 0) {
+      return styles.default;
+    }
+  } catch (error) {
+    // `nodejs_compat` can expose `process` in the Worker runtime, but the served
+    // stylesheet still needs to come from the bundled text module there.
+    if (typeof process === "undefined" || process.release?.name !== "node") {
+      throw error;
+    }
   }
 
-  const styles = await import("../.generated/styles.css");
-  return styles.default;
+  if (typeof process === "undefined" || process.release?.name !== "node") {
+    throw new Error("Generated stylesheet module did not provide CSS content.");
+  }
+
+  const { readFile } = await import("node:fs/promises");
+  return await readFile(new URL("../.generated/styles.css", import.meta.url), "utf8");
 }
 
 async function handleScheduledBackup(controller: ScheduledControllerLike, env: Env): Promise<void> {
