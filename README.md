@@ -25,7 +25,6 @@ Local development in this repo targets macOS. Other platforms may need script an
 - CI reads the same pinned Node.js version directly from `package.json`.
 - npm now comes from that pinned Node release instead of a separate repo version file.
 - Copy `.dev.vars.example` to `.dev.vars` before running projects that need local secrets.
-- Set `DEMO_MODE=true` in `.dev.vars` if you want the local-only demo workspace at `/demo`.
 - Set `APP_ENCRYPTION_SECRET` in `.dev.vars` if you want channel credentials encrypted with a key separate from `SESSION_SECRET`.
 - Create the D1 database binding and replace the placeholder `database_id` in `wrangler.jsonc` before running auth flows.
 - Run `npm run db:migrate` before the first authenticated start.
@@ -57,7 +56,6 @@ Local development in this repo targets macOS. Other platforms may need script an
 - X connections validate the submitted user-context access token and normalize the saved handle from the authenticated account before storing encrypted tokens.
 - LinkedIn connections validate the submitted member access token and normalize the saved account identifier from the authenticated member profile before storing encrypted tokens.
 - `POST /posting-schedule` updates the authenticated per-channel posting schedule and stores the resulting Cloudflare cron expressions in D1 app state.
-- `GET /demo` serves the development-only demo workspace when `DEMO_MODE=true` is set locally and the request stays on a loopback host.
 - `GET /styles.css` serves the generated Tailwind stylesheet.
 - `GET /api/health` serves a JSON health response for smoke tests and tooling.
 - The scheduled Worker entrypoint can write JSON exports, summary reports, and manifests to R2 when `BACKUP_BUCKET` is configured.
@@ -69,11 +67,10 @@ Local development in this repo targets macOS. Other platforms may need script an
 - `src/backup/` holds the scheduled backup export and R2 storage helpers.
 - `src/channels/` holds per-account channel connection persistence and validation.
 - `src/providers/` holds provider-specific adapter logic such as Bluesky, X, and LinkedIn connection preparation.
-- `src/demo/` holds development-only demo gating, seeded data, and local demo scheduling helpers.
 - `src/history/` holds sent-post history loading for the normal authenticated routes.
 - `src/queue/` holds channel constraint logic for the dedicated composer and related queue behavior.
 - `src/schedule/` holds per-channel posting schedule persistence plus Cloudflare cron mapping helpers.
 - `src/secrets/` holds reusable encrypted secret storage helpers for D1-backed credentials.
 - `src/api/` holds API response modules such as the health endpoint.
-- `src/views/` holds HTML rendering modules for the queue, compose, history, settings, and demo surfaces.
+- `src/views/` holds HTML rendering modules for the queue, compose, history, and settings surfaces.
 - Tests live next to the code they exercise under `src/`.

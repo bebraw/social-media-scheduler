@@ -20,7 +20,6 @@ describe("renderQueuePage", () => {
     const html = renderQueuePage({
       configuredConnections: connections.length,
       connections,
-      demoAvailable: false,
       postingSchedules: getDefaultPostingSchedules(),
       user: {
         name: "Scheduler Admin",
@@ -54,26 +53,10 @@ describe("renderQueuePage", () => {
     expect(html).toContain('rel="stylesheet" href="/styles.css"');
   });
 
-  it("shows the demo card when demo mode is available", () => {
-    const html = renderQueuePage({
-      configuredConnections: connections.length,
-      connections,
-      demoAvailable: true,
-      postingSchedules: getDefaultPostingSchedules(),
-      user: {
-        name: "Scheduler Admin",
-        role: "editor",
-      },
-    });
-
-    expect(html).toContain("Open demo mode");
-  });
-
   it("shows the readonly schedule note for readonly users", () => {
     const html = renderQueuePage({
       configuredConnections: connections.length,
       connections,
-      demoAvailable: false,
       postingSchedules: getDefaultPostingSchedules(),
       user: {
         name: "Readonly User",
@@ -89,7 +72,6 @@ describe("renderQueuePage", () => {
     const html = renderQueuePage({
       configuredConnections: 0,
       connections: [],
-      demoAvailable: false,
       postingSchedules: getDefaultPostingSchedules(),
       user: {
         name: "Scheduler Admin",

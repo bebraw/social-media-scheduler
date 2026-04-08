@@ -1,6 +1,6 @@
 # ADR-015: Constrain Demo Mode To Local Development
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-020](./ADR-020-align-local-development-with-production-routes.md)
 
 **Date:** 2026-04-02
 

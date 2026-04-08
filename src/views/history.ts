@@ -10,12 +10,11 @@ const pageDescription = "Review previously sent posts by channel.";
 
 interface HistoryPageOptions {
   connections: ChannelConnection[];
-  demoAvailable: boolean;
   sentHistory: SentPostHistoryEntry[];
   user: SessionUser;
 }
 
-export function renderHistoryPage({ connections, demoAvailable, sentHistory, user }: HistoryPageOptions): string {
+export function renderHistoryPage({ connections, sentHistory, user }: HistoryPageOptions): string {
   return renderWorkspacePage({
     activePath: "/history",
     content: `<div class="grid gap-4 px-5 py-5 sm:px-8 sm:py-8">
@@ -38,7 +37,6 @@ export function renderHistoryPage({ connections, demoAvailable, sentHistory, use
         <p class="mt-4${sentHistory.length === 0 ? "" : " hidden"} rounded-xl border border-dashed border-app-line bg-app-canvas/50 px-4 py-3 text-sm text-app-text-soft" data-history-empty>No sent posts are available yet.</p>
       `)}
     </div>`,
-    demoAvailable,
     description: pageDescription,
     title: pageTitle,
     user,

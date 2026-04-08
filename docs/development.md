@@ -21,7 +21,6 @@ This template is set up for the local Agent CI runner from `agent-ci.dev`.
 - CI reads that same exact Node.js version directly through `actions/setup-node`.
 - npm comes from that pinned Node release rather than a separate repo-level npm pin.
 - Copy `.dev.vars.example` to `.dev.vars` and replace placeholder values when a project needs local secrets.
-- Set `DEMO_MODE=true` in `.dev.vars` if you want the development-only `/demo` workspace while running locally on `127.0.0.1` or `localhost`.
 - Copy `.env.agent-ci.example` to `.env.agent-ci` when you need machine-local Agent CI overrides. Agent CI loads that file automatically.
 - If your clone has no `origin` remote, set `GITHUB_REPO=owner/repo` in `.env.agent-ci` to stop Agent CI from warning while inferring the repository name.
 - Start a Docker runtime before running Agent CI.
@@ -59,13 +58,11 @@ If local CI warns with `No such remote 'origin'`, add `GITHUB_REPO=owner/repo` t
 - Check formatting with `npm run format:check`.
 - If a run pauses on failure, fix the issue and resume with `npm run ci:local:retry -- --name <runner-name>`.
 
-The template now ships with a private scheduler foundation in `src/worker.ts`. `npm run dev` starts it on `http://127.0.0.1:8787`, and Playwright uses `npm run e2e:server` on `http://127.0.0.1:8788` after first applying local D1 migrations, creating the default e2e account, and seeding deterministic channel fixtures. The e2e server forces Chokidar polling mode to avoid file-watcher exhaustion in macOS-hosted local runs while preserving the normal `npm run dev` developer loop. Auth helpers live under `src/auth/`, backup helpers live under `src/backup/`, demo-mode helpers live under `src/demo/`, posting schedule helpers live under `src/schedule/`, API modules live under `src/api/`, view modules live under `src/views/`, and tests are colocated under `src/`.
+The template now ships with a private scheduler foundation in `src/worker.ts`. `npm run dev` starts it on `http://127.0.0.1:8787`, and Playwright uses `npm run e2e:server` on `http://127.0.0.1:8788` after first applying local D1 migrations, creating the default e2e account, and seeding deterministic channel fixtures. The e2e server forces Chokidar polling mode to avoid file-watcher exhaustion in macOS-hosted local runs while preserving the normal `npm run dev` developer loop. Auth helpers live under `src/auth/`, backup helpers live under `src/backup/`, posting schedule helpers live under `src/schedule/`, API modules live under `src/api/`, view modules live under `src/views/`, and tests are colocated under `src/`.
 
 After sign-in, the default authenticated surface is now the `Queue` view at `/`, which includes the per-channel posting schedule editor for whichever providers are currently configured in Settings. The dedicated `Compose` and `History` views also derive their visible accounts and filters from those saved channel connections instead of assuming one fixed card per provider.
 
 Posting schedules are stored in D1 `app_state` as Cloudflare-cron-compatible expressions derived from the queue UI's weekday and UTC time controls. The app saves and renders those cron expressions directly, but it does not rewrite deployed Wrangler Cron Triggers for you. If you want scheduled events to fire in a deployed environment, copy the saved cron values into `wrangler.jsonc` or the equivalent deployment config.
-
-Demo mode is intentionally development-only. When `DEMO_MODE=true` is present in `.dev.vars`, the Worker exposes `/demo` on loopback hosts only, seeds that page with local example data, and keeps demo scheduling inside local D1 state instead of calling any real publishing service.
 
 The GitHub Actions CI workflow splits fast checks from browser checks into separate jobs, reads the pinned Node version from `package.json`, runs repository-shape validation as part of the fast job, runs the browser job in the version-pinned Playwright container image `mcr.microsoft.com/playwright:v1.58.2-noble`, and cancels superseded runs on the same ref. That keeps the browser job from reinstalling Chromium on every run while still matching the repo's pinned Playwright version.
 

@@ -54,14 +54,12 @@ cp .dev.vars.example .dev.vars
 Set these values in `.dev.vars`:
 
 - `SESSION_SECRET`: required, used to sign auth cookies
-- `DEMO_MODE`: optional, set to `true` if you want the local-only demo workspace at `/demo`
 - `APP_ENCRYPTION_SECRET`: recommended for encrypting stored channel credentials; if omitted, encrypted storage falls back to `SESSION_SECRET`
 
 Example:
 
 ```env
 SESSION_SECRET=change-this-to-a-long-random-secret
-DEMO_MODE=true
 APP_ENCRYPTION_SECRET=change-this-to-a-different-long-random-secret
 ```
 
@@ -116,8 +114,6 @@ Open the local URL shown by Wrangler, usually `http://127.0.0.1:8787`.
 After signing in, the app opens on the default `Queue` view at `/`. Use `/compose` for the dedicated post composer.
 Use `/settings` to add one channel connection per account or profile when you need multiple accounts on the same provider.
 The authenticated Queue, Compose, and History views stay mostly empty until at least one channel connection is configured.
-
-If `DEMO_MODE=true` is set in `.dev.vars`, local development also exposes `/demo` on loopback hosts for seeded demo data and local-only scheduling practice.
 
 ## First Run Checklist
 

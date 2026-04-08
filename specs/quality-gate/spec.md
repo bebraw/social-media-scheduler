@@ -50,6 +50,7 @@ The template needs a verification baseline that stays strict enough for end-to-e
 - Local Playwright browser installation should go through a pinned repo script instead of ad hoc `npx playwright install ...` usage.
 - The browser gate must not depend on live third-party provider credentials or outbound provider API availability.
 - The browser gate fixture server must fail fast when a Playwright flow tries to create a live provider connection instead of using seeded e2e state.
+- The browser gate must exercise the same authenticated route surface that production exposes instead of relying on a local-only app mode.
 
 ### Verification
 

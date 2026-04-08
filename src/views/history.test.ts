@@ -31,7 +31,6 @@ describe("renderHistoryPage", () => {
     ];
     const html = renderHistoryPage({
       connections,
-      demoAvailable: false,
       sentHistory,
       user: {
         name: "Scheduler Admin",
@@ -50,7 +49,6 @@ describe("renderHistoryPage", () => {
   it("renders the empty state when no history exists", () => {
     const html = renderHistoryPage({
       connections: [],
-      demoAvailable: false,
       sentHistory: [],
       user: {
         name: "Scheduler Admin",

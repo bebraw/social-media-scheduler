@@ -14,8 +14,8 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 
 ### Architecture
 
-- **Entry points:** `wrangler dev` via `src/worker.ts`, authenticated `GET /`, `GET /compose`, `GET /history`, `GET /settings`, `POST /settings/channels`, and `POST /posting-schedule` page routes, development-only `GET /demo` and `POST /demo/queue`, `npm run account:create` for auth user management, and the Worker scheduled handler for automated backups
-- **Source layout:** `src/worker.ts` routes requests, `src/auth/` holds auth primitives and D1-backed auth state helpers, `src/backup/` holds the backup export flow, `src/channels/` holds channel connection persistence, `src/demo/` holds development-only demo gating plus seeded/local demo state, `src/history/` holds sent-post history loading for normal routes, `src/queue/` holds channel constraint logic, `src/schedule/` holds posting schedule persistence plus Cloudflare cron mapping helpers, `src/secrets/` holds encrypted D1 secret helpers, `src/api/` holds API handlers, and `src/views/` holds the queue, compose, history, settings, and demo HTML renderers plus the shared interaction script.
+- **Entry points:** `wrangler dev` via `src/worker.ts`, authenticated `GET /`, `GET /compose`, `GET /history`, `GET /settings`, `POST /settings/channels`, and `POST /posting-schedule` page routes, `npm run account:create` for auth user management, and the Worker scheduled handler for automated backups
+- **Source layout:** `src/worker.ts` routes requests, `src/auth/` holds auth primitives and D1-backed auth state helpers, `src/backup/` holds the backup export flow, `src/channels/` holds channel connection persistence, `src/history/` holds sent-post history loading for normal routes, `src/queue/` holds channel constraint logic, `src/schedule/` holds posting schedule persistence plus Cloudflare cron mapping helpers, `src/secrets/` holds encrypted D1 secret helpers, `src/api/` holds API handlers, and `src/views/` holds the queue, compose, history, and settings HTML renderers plus the shared interaction script.
 - **Styling pipeline:** `src/tailwind-input.css` compiles to `.generated/styles.css`, which the Worker serves at `/styles.css`.
 - **Data models:** D1 stores `app_users`, `login_attempts`, generic `app_state`, `channel_connections`, and encrypted `app_secrets`. R2 stores backup exports, summaries, and manifests when configured.
 - **Dependencies:** Wrangler provides the Worker runtime, D1, R2, and scheduled triggers; Playwright and Vitest verify the behavior.
@@ -41,8 +41,6 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 - [ ] Authenticated requests to `/settings` return a dedicated settings page that can list multiple saved connections for the same provider.
 - [ ] `POST /settings/channels` validates and stores channel connection metadata in D1 while encrypting token-like fields before persistence.
 - [ ] `POST /posting-schedule` validates and stores the per-channel posting schedule in local D1-backed app state without inventing a separate scheduler config table.
-- [ ] Authenticated requests to `/demo` return a seeded demo workspace only when `DEMO_MODE=true` is configured locally and the request stays on a loopback host.
-- [ ] `POST /demo/queue` stores scheduled demo posts in local D1-backed app state without calling any external publishing service.
 - [ ] The health route returns stable JSON for smoke tests and tooling.
 - [ ] The scheduled handler writes backup artifacts to R2 when configured and skips when the export content is unchanged.
 - [ ] The spec is updated in the same change set.
@@ -60,8 +58,6 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 - The history page must keep filtering cards on the client without a full page reload while deriving its available filters from configured connections.
 - Posting schedule edits must stay authenticated, require at least one weekday plus a valid UTC time per channel, and reject readonly users.
 - Channel settings must stay authenticated, allow repeated providers such as multiple X accounts, and keep token-like values encrypted at rest.
-- `/demo` must return HTTP 404 unless demo mode is explicitly enabled for local development and the request stays on a loopback host.
-- Demo scheduling must write only to local demo state and must not call any external publishing adapter or service.
 - Session cookies must stay signed with `SESSION_SECRET` and marked `HttpOnly`.
 - Scheduled backups must remain deterministic enough to skip unchanged exports.
 - Unknown routes must return HTTP 404.
@@ -132,18 +128,6 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 - Given: the operator is already authenticated
 - When: they edit a channel draft on `/compose` and click `Queue post`
 - Then: the client-side mock queue prepends that post into the composer queue preview and updates queue metrics without a full page reload
-
-**Scenario: Developer opens demo mode locally**
-
-- Given: `DEMO_MODE=true` is set in `.dev.vars` and the request uses `127.0.0.1` or `localhost`
-- When: the authenticated developer opens `/demo`
-- Then: they see seeded demo drafts, a seeded demo queue, and seeded demo history in a development-only sandbox
-
-**Scenario: Developer schedules a demo post**
-
-- Given: demo mode is enabled locally for an authenticated editor
-- When: they submit `POST /demo/queue`
-- Then: the Worker stores that demo queue item in local D1-backed app state and redirects back to `/demo` without calling any external service
 
 **Scenario: Tooling checks app health**
 

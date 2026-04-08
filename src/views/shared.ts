@@ -44,19 +44,13 @@ export function redirectResponse(location: string, init: ResponseInit = {}): Res
   });
 }
 
-export function renderWorkspaceNav(options: {
-  activePath: "/" | "/compose" | "/history" | "/settings" | "/demo";
-  demoAvailable?: boolean;
-}): string {
-  const links: Array<{ href: "/" | "/compose" | "/history" | "/settings" | "/demo"; label: string }> = [
+export function renderWorkspaceNav(options: { activePath: "/" | "/compose" | "/history" | "/settings" }): string {
+  const links: Array<{ href: "/" | "/compose" | "/history" | "/settings"; label: string }> = [
     { href: "/", label: "Queue" },
     { href: "/compose", label: "Compose" },
     { href: "/history", label: "History" },
     { href: "/settings", label: "Settings" },
   ];
-  if (options.demoAvailable) {
-    links.push({ href: "/demo", label: "Demo mode" });
-  }
 
   return `<nav class="mt-6 flex flex-wrap gap-2" aria-label="Workspace pages">
     ${links

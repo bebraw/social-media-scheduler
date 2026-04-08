@@ -19,7 +19,6 @@ import {
   listConfiguredProviders,
   loadChannelConnections,
 } from "./channels";
-import { canAccessDemo, getDemoDrafts, getDemoSentHistory, loadDemoQueuedPosts, scheduleDemoPost } from "./demo";
 import { loadSentPostHistory } from "./history";
 import { listAppRoutes } from "./app-routes";
 import { CHANNEL_CONSTRAINTS } from "./queue/constraints";
@@ -31,7 +30,6 @@ import {
   savePostingSchedules,
 } from "./schedule";
 import { renderComposePage } from "./views/compose";
-import { renderDemoPage } from "./views/demo";
 import { renderHistoryPage } from "./views/history";
 import { HOME_PAGE_SCRIPT, renderQueuePage } from "./views/home";
 import { renderLoginPage } from "./views/login";
@@ -65,7 +63,7 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
   }
 
   if (url.pathname === "/api/health") {
-    return createHealthResponse(listAppRoutes({ includeDemo: canAccessDemo(request, env) }).map((route) => route.path));
+    return createHealthResponse(listAppRoutes().map((route) => route.path));
   }
 
   const authState = await resolveAuthState(env);
@@ -161,7 +159,6 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
       renderQueuePage({
         configuredConnections: connections.length,
         connections,
-        demoAvailable: canAccessDemo(request, env),
         postingSchedules,
         scheduleSaved: url.searchParams.get("schedule") === "updated",
         user: sessionUser,
@@ -188,7 +185,6 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
         renderQueuePage({
           configuredConnections: 0,
           connections,
-          demoAvailable: canAccessDemo(request, env),
           postingSchedules,
           scheduleError: "Add at least one channel connection before editing the posting schedule.",
           user: sessionUser,
@@ -216,7 +212,6 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
         renderQueuePage({
           configuredConnections: connections.length,
           connections,
-          demoAvailable: canAccessDemo(request, env),
           postingSchedules,
           scheduleError: message,
           user: sessionUser,
@@ -235,7 +230,6 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
       renderSettingsPage({
         canEdit: !isReadonlyUser(sessionUser),
         connections: await loadChannelConnections(env.DB),
-        demoAvailable: canAccessDemo(request, env),
         saved: url.searchParams.get("channel") === "connected",
         user: sessionUser,
       }),
@@ -265,7 +259,6 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
         renderSettingsPage({
           canEdit: true,
           connections: await loadChannelConnections(env.DB),
-          demoAvailable: canAccessDemo(request, env),
           draft,
           error:
             "The Playwright e2e server uses seeded channel connections only. Update npm run e2e:prepare fixtures instead of creating live provider connections in browser tests.",
@@ -285,7 +278,6 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
         renderSettingsPage({
           canEdit: true,
           connections: await loadChannelConnections(env.DB),
-          demoAvailable: canAccessDemo(request, env),
           draft,
           error: message,
           user: sessionUser,
@@ -301,7 +293,6 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
     return htmlResponse(
       renderComposePage({
         connections,
-        demoAvailable: canAccessDemo(request, env),
         user: sessionUser,
       }),
     );
@@ -314,54 +305,10 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
     return htmlResponse(
       renderHistoryPage({
         connections,
-        demoAvailable: canAccessDemo(request, env),
         sentHistory,
         user: sessionUser,
       }),
     );
-  }
-
-  if (url.pathname === "/demo" || url.pathname === "/demo/queue") {
-    if (!canAccessDemo(request, env)) {
-      return htmlResponse(renderNotFoundPage(url.pathname), 404);
-    }
-
-    if (url.pathname === "/demo/queue" && request.method === "POST") {
-      if (!env.DB) {
-        return new Response("D1 binding is missing.", { status: 500 });
-      }
-      if (isReadonlyUser(sessionUser)) {
-        return new Response("Readonly users cannot schedule demo posts.", { status: 403 });
-      }
-
-      const formData = await request.formData();
-      const channel = String(formData.get("channel") || "");
-      const body = String(formData.get("body") || "");
-      const slot = String(formData.get("slot") || "");
-      if (channel !== "linkedin" && channel !== "x" && channel !== "bluesky") {
-        return new Response("Unsupported demo channel.", { status: 400 });
-      }
-      await scheduleDemoPost(env.DB, {
-        channel,
-        body,
-        slot,
-      });
-
-      return redirectResponse("/demo");
-    }
-
-    if (url.pathname === "/demo" && request.method === "GET") {
-      const queuedPosts = env.DB ? await loadDemoQueuedPosts(env.DB) : [];
-
-      return htmlResponse(
-        renderDemoPage({
-          drafts: getDemoDrafts(),
-          queuedPosts,
-          sentHistory: getDemoSentHistory(),
-          user: sessionUser,
-        }),
-      );
-    }
   }
 
   return htmlResponse(renderNotFoundPage(url.pathname), 404);

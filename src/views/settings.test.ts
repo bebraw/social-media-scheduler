@@ -17,7 +17,6 @@ describe("renderSettingsPage", () => {
     const html = renderSettingsPage({
       canEdit: true,
       connections: [channelConnection],
-      demoAvailable: false,
       user: {
         name: "Scheduler Admin",
         role: "editor",
@@ -39,7 +38,6 @@ describe("renderSettingsPage", () => {
     const html = renderSettingsPage({
       canEdit: true,
       connections: [],
-      demoAvailable: false,
       error: "Add an access token before saving the channel connection.",
       saved: true,
       user: {

@@ -11,7 +11,6 @@ import { renderPostingSchedulePanel } from "./posting-schedule";
 interface QueuePageOptions {
   configuredConnections: number;
   connections: ChannelConnection[];
-  demoAvailable: boolean;
   postingSchedules: ChannelPostingSchedule[];
   scheduleError?: string;
   scheduleSaved?: boolean;
@@ -21,7 +20,6 @@ interface QueuePageOptions {
 export function renderQueuePage({
   configuredConnections,
   connections,
-  demoAvailable,
   postingSchedules,
   scheduleError,
   scheduleSaved,
@@ -71,15 +69,6 @@ export function renderQueuePage({
           saved: scheduleSaved,
           schedules: visibleSchedules,
         })}
-        ${
-          demoAvailable
-            ? renderPanel(`
-          <h2 class="text-lg font-semibold tracking-[-0.02em]">Demo mode</h2>
-          <p class="mt-3 text-sm leading-6 text-app-text-soft">Local-only sandbox with seeded data for development walkthroughs and safe scheduling experiments.</p>
-          ${renderLinkButton({ className: "mt-4", href: "/demo", label: "Open demo mode" })}
-        `)
-            : ""
-        }
       </section>
       ${renderQueuedPostsSection({
         description: "Posts lined up across the current queue.",
@@ -87,7 +76,6 @@ export function renderQueuePage({
         title: "Queued posts",
       })}
     </div>`,
-    demoAvailable,
     description: "See what is queued and adjust channel schedules.",
     title: "Queue",
     user,

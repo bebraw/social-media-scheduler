@@ -7,11 +7,10 @@ import { renderWorkspacePage, type SessionUser } from "./layout";
 
 interface ComposePageOptions {
   connections: ChannelConnection[];
-  demoAvailable: boolean;
   user: SessionUser;
 }
 
-export function renderComposePage({ connections, demoAvailable, user }: ComposePageOptions): string {
+export function renderComposePage({ connections, user }: ComposePageOptions): string {
   const draftEntries = resolveDraftEntries(buildComposerDrafts(connections));
 
   return renderWorkspacePage({
@@ -59,7 +58,6 @@ export function renderComposePage({ connections, demoAvailable, user }: ComposeP
         })}
       </section>
     </div>`,
-    demoAvailable,
     description: "Draft posts, attach media, and preview the local queue.",
     title: "Compose",
     user,

@@ -28,7 +28,6 @@ describe("renderComposePage", () => {
   it("renders the compose page with channel tabs and local queue controls", () => {
     const html = renderComposePage({
       connections,
-      demoAvailable: false,
       user: {
         name: "Scheduler Admin",
         role: "editor",
@@ -58,7 +57,6 @@ describe("renderComposePage", () => {
   it("renders an empty state when no channel connections exist", () => {
     const html = renderComposePage({
       connections: [],
-      demoAvailable: false,
       user: {
         name: "Scheduler Admin",
         role: "editor",
@@ -76,7 +74,6 @@ describe("renderComposePage", () => {
     try {
       const html = renderComposePage({
         connections,
-        demoAvailable: true,
         user: {
           name: "Scheduler Admin",
           role: "editor",
@@ -85,7 +82,7 @@ describe("renderComposePage", () => {
 
       expect(removedConstraint).toBeDefined();
       expect(html).not.toContain('data-channel-kind="bluesky"');
-      expect(html).toContain(">Demo mode<");
+      expect(html).not.toContain(">Demo mode<");
     } finally {
       if (removedConstraint) {
         CHANNEL_CONSTRAINTS.push(removedConstraint);

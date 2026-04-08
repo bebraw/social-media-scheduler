@@ -772,99 +772,6 @@ describe("worker", () => {
     expect(body).toContain("No sent posts are available yet.");
   });
 
-  it("hides demo mode when the request is not local development", async () => {
-    const db = createTestDatabase();
-    await seedAuthUser(db, {
-      name: "Scheduler Admin",
-      password: "test-password-123",
-      role: "editor",
-    });
-    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
-      name: "Scheduler Admin",
-      role: "editor",
-    });
-
-    const response = await handleRequest(
-      new Request("http://example.com/demo", {
-        headers: {
-          cookie: `${SESSION_COOKIE}=${sessionToken}`,
-        },
-      }),
-      createTestEnv({ DB: db, DEMO_MODE: "true" }),
-    );
-
-    expect(response.status).toBe(404);
-  });
-
-  it("renders demo mode only when enabled on loopback", async () => {
-    const db = createTestDatabase();
-    await seedAuthUser(db, {
-      name: "Scheduler Admin",
-      password: "test-password-123",
-      role: "editor",
-    });
-    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
-      name: "Scheduler Admin",
-      role: "editor",
-    });
-
-    const response = await handleRequest(
-      new Request("http://127.0.0.1:8787/demo", {
-        headers: {
-          cookie: `${SESSION_COOKIE}=${sessionToken}`,
-        },
-      }),
-      createTestEnv({ DB: db, DEMO_MODE: "true" }),
-    );
-
-    expect(response.status).toBe(200);
-    const body = await response.text();
-    expect(body).toContain("Demo Mode");
-    expect(body).toContain("Schedule demo post");
-  });
-
-  it("allows editors to schedule demo posts without leaving demo mode", async () => {
-    const db = createTestDatabase();
-    await seedAuthUser(db, {
-      name: "Scheduler Admin",
-      password: "test-password-123",
-      role: "editor",
-    });
-    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
-      name: "Scheduler Admin",
-      role: "editor",
-    });
-
-    const response = await handleRequest(
-      new Request("http://127.0.0.1:8787/demo/queue", {
-        method: "POST",
-        headers: {
-          cookie: `${SESSION_COOKIE}=${sessionToken}`,
-        },
-        body: new URLSearchParams({
-          channel: "x",
-          body: "Queue this demo-only post.",
-          slot: "Tomorrow, 09:00",
-        }),
-      }),
-      createTestEnv({ DB: db, DEMO_MODE: "true" }),
-    );
-
-    expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe("/demo");
-
-    const demoResponse = await handleRequest(
-      new Request("http://127.0.0.1:8787/demo", {
-        headers: {
-          cookie: `${SESSION_COOKIE}=${sessionToken}`,
-        },
-      }),
-      createTestEnv({ DB: db, DEMO_MODE: "true" }),
-    );
-
-    await expect(demoResponse.text()).resolves.toContain("Queue this demo-only post.");
-  });
-
   it("returns a JSON health response", async () => {
     const response = await handleRequest(new Request("http://example.com/api/health"), createTestEnv());
 
@@ -874,16 +781,6 @@ describe("worker", () => {
       ok: true,
       name: "social-media-scheduler",
       routes: ["/", "/compose", "/history", "/settings", "/settings/channels", "/posting-schedule", "/login", "/api/health"],
-    });
-  });
-
-  it("includes the demo route in health output when demo mode is enabled locally", async () => {
-    const response = await handleRequest(new Request("http://127.0.0.1:8787/api/health"), createTestEnv({ DEMO_MODE: "true" }));
-
-    await expect(response.json()).resolves.toEqual({
-      ok: true,
-      name: "social-media-scheduler",
-      routes: ["/", "/compose", "/history", "/settings", "/settings/channels", "/posting-schedule", "/login", "/api/health", "/demo"],
     });
   });
 

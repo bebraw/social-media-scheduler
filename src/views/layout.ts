@@ -5,27 +5,18 @@ export interface SessionUser {
   role: string;
 }
 
-export type WorkspacePath = "/" | "/compose" | "/history" | "/settings" | "/demo";
+export type WorkspacePath = "/" | "/compose" | "/history" | "/settings";
 
 interface WorkspacePageOptions {
   activePath: WorkspacePath;
   content: string;
-  demoAvailable: boolean;
   description: string;
   title: string;
   user: SessionUser;
   width?: "base" | "wide";
 }
 
-export function renderWorkspacePage({
-  activePath,
-  content,
-  demoAvailable,
-  description,
-  title,
-  user,
-  width = "wide",
-}: WorkspacePageOptions): string {
+export function renderWorkspacePage({ activePath, content, description, title, user, width = "wide" }: WorkspacePageOptions): string {
   const pageWidthClass = width === "base" ? "w-[min(64rem,calc(100vw-2rem))]" : "w-[min(72rem,calc(100vw-2rem))]";
 
   return `<!doctype html>
@@ -46,7 +37,7 @@ export function renderWorkspacePage({
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-app-text-soft">Social Media Scheduler</p>
               <h1 class="mt-3 text-4xl leading-none font-semibold tracking-[-0.04em] sm:text-5xl">${escapeHtml(title)}</h1>
               <p class="mt-4 max-w-2xl text-base leading-7 text-app-text-soft sm:text-lg">${escapeHtml(description)}</p>
-              ${renderWorkspaceNav({ activePath, demoAvailable })}
+              ${renderWorkspaceNav({ activePath })}
             </div>
             ${renderSessionPanel(user)}
           </div>

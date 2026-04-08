@@ -9,8 +9,6 @@ const BASE_APP_ROUTES = [
   { path: "/api/health", purpose: "JSON health endpoint for tooling and smoke tests" },
 ] as const;
 
-const DEMO_ROUTE = { path: "/demo", purpose: "Development-only demo workspace for local scheduling experiments" } as const;
-
-export function listAppRoutes(options: { includeDemo?: boolean } = {}): Array<{ path: string; purpose: string }> {
-  return options.includeDemo ? [...BASE_APP_ROUTES, DEMO_ROUTE] : [...BASE_APP_ROUTES];
+export function listAppRoutes(): Array<{ path: string; purpose: string }> {
+  return [...BASE_APP_ROUTES];
 }

@@ -8,7 +8,7 @@ Use this file for global constraints. Use feature specs under `specs/` for domai
 
 - Keep the template lightweight, reusable, easy to clone, and easy to prune.
 - Keep the scheduler domain model intentionally abstract until a concrete adapter or workflow needs a stronger schema.
-- Keep demo-only surfaces isolated from the normal authenticated routes and available only in local development.
+- Keep the local development route surface aligned with the production route surface so verification exercises the same behavior in both environments.
 - Persist operator-defined posting schedules in D1 `app_state` as Cloudflare-cron-compatible data instead of inventing a separate scheduler config store too early.
 - Store channel connection metadata in dedicated D1 rows and store adapter credentials only as encrypted `app_secrets` values.
 - Keep social-provider SDKs behind provider adapter modules instead of calling them directly from routes or views.

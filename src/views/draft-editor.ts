@@ -1,5 +1,4 @@
 import type { ChannelConnection } from "../channels";
-import type { DemoDraft } from "../demo";
 import { CHANNEL_CONSTRAINTS, describeUsage, type ChannelConstraint, type QueueChannel } from "../queue/constraints";
 import { renderButton } from "./components";
 import { escapeHtml, renderAttachmentComposer } from "./shared";
@@ -50,9 +49,9 @@ export function buildComposerDrafts(connections: ChannelConnection[]): ComposerD
   });
 }
 
-export function resolveDraftEntries(drafts: Array<ComposerDraft | DemoDraft>): DraftEntry[] {
+export function resolveDraftEntries(drafts: ComposerDraft[]): DraftEntry[] {
   return drafts.flatMap((draft) => {
-    const channel = "channel" in draft ? draft.channel : draft.id;
+    const channel = draft.channel;
     const constraint = CHANNEL_CONSTRAINTS.find((item) => item.id === channel);
     if (!constraint) {
       return [];
@@ -61,13 +60,13 @@ export function resolveDraftEntries(drafts: Array<ComposerDraft | DemoDraft>): D
     return [
       {
         draft: {
-          accountHandle: "accountHandle" in draft ? draft.accountHandle : "",
+          accountHandle: draft.accountHandle,
           accent: draft.accent,
           channel,
           content: draft.content,
           id: draft.id,
-          label: "label" in draft ? draft.label : constraint.name,
-          placeholder: "placeholder" in draft ? draft.placeholder : undefined,
+          label: draft.label,
+          placeholder: draft.placeholder,
           slot: draft.slot,
           subtitle: draft.subtitle,
         },
@@ -126,40 +125,6 @@ export function renderComposeDraftPanels(entries: DraftEntry[]): string {
         statusLabel: usage.state === "over" ? "Over limit" : usage.state === "warning" ? "Close to limit" : "Ready",
         textareaContent: draft.content,
         textareaPlaceholder: draft.placeholder,
-      });
-    })
-    .join("");
-}
-
-export function renderDemoDraftPanels(entries: DraftEntry[]): string {
-  return entries
-    .map(({ constraint, draft }, index) => {
-      const isSelected = index === 0;
-
-      return renderDraftPanel({
-        beforeEditor: `<form class="contents" method="post" action="/demo/queue" enctype="multipart/form-data">
-          <input type="hidden" name="channel" value="${escapeHtml(draft.id)}">`,
-        constraint,
-        draft,
-        editorAriaLabel: `${draft.label} post copy`,
-        editorLabel: `${constraint.name} demo post`,
-        inputName: "body",
-        panelIdPrefix: "demo",
-        selected: isSelected,
-        sideContent: `${renderConstraintCard(constraint.limitLabel, `0 / ${escapeHtml(String(constraint.limit))}`)}
-          <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
-            <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Demo safety</p>
-            <p class="mt-2 text-sm leading-6 text-app-text-soft">Scheduling here only updates local demo data. It does not call any external publishing service.</p>
-          </div>
-          ${renderAttachmentComposer({ channelName: constraint.name, serverMode: true })}
-          ${renderSlotSelector(constraint.name, draft.slot, "slot")}
-          <div class="flex flex-wrap gap-3 pt-2">
-            ${renderButton({ attributes: 'data-queue-button data-queue-mode="server"', label: "Schedule demo post", type: "submit", variant: "primary" })}
-          </div>`,
-        statusClass: "rounded-full bg-app-accent px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-white",
-        statusLabel: "Ready",
-        textareaAttributes: `data-channel-limit="${constraint.limit}"`,
-        textareaContent: draft.content,
       });
     })
     .join("");

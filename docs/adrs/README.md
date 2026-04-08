@@ -30,11 +30,12 @@ Skip an ADR for small, reversible, or purely tactical choices.
 | [ADR-012](./ADR-012-constrain-local-tooling-to-macos.md)                            | Accepted   | Treat macOS as the local tooling baseline and use direct pinned Agent CI scripts.               |
 | [ADR-013](./ADR-013-return-to-npm-for-agent-ci-compatibility.md)                    | Accepted   | Return to npm because local Agent CI remains unreliable with pnpm warmed dependency mounts.     |
 | [ADR-014](./ADR-014-adopt-d1-auth-and-r2-backup-foundations.md)                     | Accepted   | Adopt D1-backed auth and scheduled R2 backups as the scheduler's initial operational base.      |
-| [ADR-015](./ADR-015-constrain-demo-mode-to-local-development.md)                    | Accepted   | Keep seeded demo workflows on a dedicated local-only route instead of the normal app pages.     |
+| [ADR-015](./ADR-015-constrain-demo-mode-to-local-development.md)                    | Superseded | Keep seeded demo workflows on a dedicated local-only route instead of the normal app pages.     |
 | [ADR-016](./ADR-016-store-posting-schedules-as-cloudflare-cron.md)                  | Accepted   | Store per-channel posting schedules in app state as Cloudflare-cron-compatible expressions.     |
 | [ADR-017](./ADR-017-store-channel-connections-and-encrypted-credentials.md)         | Accepted   | Store channel connections as account-level records and encrypt token-like credentials at rest.  |
 | [ADR-018](./ADR-018-use-provider-adapters-and-library-first-social-integrations.md) | Accepted   | Use provider adapters plus library-first SDK choices for Bluesky, X, and LinkedIn integrations. |
 | [ADR-019](./ADR-019-enable-nodejs-compat-for-provider-sdks.md)                      | Accepted   | Enable Cloudflare `nodejs_compat` so the chosen provider SDK stack can resolve Node built-ins.  |
+| [ADR-020](./ADR-020-align-local-development-with-production-routes.md)              | Accepted   | Remove the local-only demo surface so local development uses the same routes as production.     |
 
 ## Creating A New ADR
 

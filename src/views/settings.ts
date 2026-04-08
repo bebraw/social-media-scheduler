@@ -8,14 +8,13 @@ import { escapeHtml } from "./shared";
 interface SettingsPageOptions {
   canEdit: boolean;
   connections: ChannelConnection[];
-  demoAvailable: boolean;
   draft?: Partial<ChannelConnectionDraft>;
   error?: string;
   saved?: boolean;
   user: SessionUser;
 }
 
-export function renderSettingsPage({ canEdit, connections, demoAvailable, draft, error, saved, user }: SettingsPageOptions): string {
+export function renderSettingsPage({ canEdit, connections, draft, error, saved, user }: SettingsPageOptions): string {
   const formDraft = {
     ...getDefaultChannelConnectionDraft(),
     ...draft,
@@ -56,7 +55,6 @@ export function renderSettingsPage({ canEdit, connections, demoAvailable, draft,
         }
       `)}
     </div>`,
-    demoAvailable,
     description: "Manage per-account channel connections and keep publishing credentials encrypted at rest.",
     title: "Settings",
     user,
