@@ -647,6 +647,45 @@ describe("worker", () => {
     await expect(response.text()).resolves.toContain("Add a label so this connection is easy to identify later.");
   });
 
+  it("rejects live provider connection creation in strict e2e mode", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+
+    const response = await handleRequest(
+      new Request("http://127.0.0.1:8788/settings/channels", {
+        method: "POST",
+        headers: {
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+        body: new URLSearchParams({
+          channel: "x",
+          label: "Personal X",
+          accountHandle: "@juho",
+          accessToken: "access-token-value",
+          refreshToken: "refresh-token-value",
+        }),
+      }),
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+        DB: db,
+        E2E_SEEDED_STATE_ONLY: "true",
+      }),
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.text()).resolves.toContain(
+      "The Playwright e2e server uses seeded channel connections only. Update npm run e2e:prepare fixtures instead of creating live provider connections in browser tests.",
+    );
+  });
+
   it("renders the authenticated compose page", async () => {
     const db = createTestDatabase();
     mockLinkedInProfileLookup();

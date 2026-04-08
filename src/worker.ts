@@ -260,6 +260,21 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
       refreshToken: String(formData.get("refreshToken") || ""),
     };
 
+    if (isE2ESeededStateOnlyConfigured(env)) {
+      return htmlResponse(
+        renderSettingsPage({
+          canEdit: true,
+          connections: await loadChannelConnections(env.DB),
+          demoAvailable: canAccessDemo(request, env),
+          draft,
+          error:
+            "The Playwright e2e server uses seeded channel connections only. Update npm run e2e:prepare fixtures instead of creating live provider connections in browser tests.",
+          user: sessionUser,
+        }),
+        409,
+      );
+    }
+
     try {
       await createChannelConnection(env.DB, env, draft);
       return redirectResponse("/settings?channel=connected");
@@ -397,4 +412,9 @@ async function handleScheduledBackup(controller: ScheduledControllerLike, env: E
   }
 
   console.log(`Automated backup completed: ${result.manifestKey}`);
+}
+
+function isE2ESeededStateOnlyConfigured(env: Env): boolean {
+  const value = (env.E2E_SEEDED_STATE_ONLY || "").trim().toLowerCase();
+  return value === "true" || value === "1" || value === "yes";
 }

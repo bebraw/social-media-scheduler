@@ -7,6 +7,7 @@ export interface Env {
   BACKUP_PREFIX?: string;
   APP_ENCRYPTION_SECRET?: string;
   DEMO_MODE?: string;
+  E2E_SEEDED_STATE_ONLY?: string;
   MEDIA_BUCKET?: R2BucketLike;
   SESSION_SECRET?: string;
 }

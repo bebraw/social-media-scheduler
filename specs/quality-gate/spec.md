@@ -49,6 +49,7 @@ The template needs a verification baseline that stays strict enough for end-to-e
 - The local CI documentation must cover the no-`origin` case through `.env.agent-ci` and `GITHUB_REPO` instead of treating that warning as normal noise.
 - Local Playwright browser installation should go through a pinned repo script instead of ad hoc `npx playwright install ...` usage.
 - The browser gate must not depend on live third-party provider credentials or outbound provider API availability.
+- The browser gate fixture server must fail fast when a Playwright flow tries to create a live provider connection instead of using seeded e2e state.
 
 ### Verification
 
