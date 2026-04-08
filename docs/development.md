@@ -21,9 +21,9 @@ This template is set up for the local Agent CI runner from `agent-ci.dev`.
 - CI reads that same exact Node.js version directly through `actions/setup-node`.
 - npm comes from that pinned Node release rather than a separate repo-level npm pin.
 - Copy `.dev.vars.example` to `.dev.vars` and replace placeholder values when a project needs local secrets.
-- Copy `.env.agent-ci.example` to `.env.agent-ci` when you need machine-local Agent CI overrides. Agent CI loads that file automatically.
+- Copy `.env.agent-ci.example` to `.env.agent-ci` when you need machine-local Agent CI overrides. The repo's `ci:local*` scripts source that file into the shell before invoking `agent-ci`, and `agent-ci` also reads it for machine-local workflow secrets.
 - If your clone has no `origin` remote, set `GITHUB_REPO=owner/repo` in `.env.agent-ci` to stop Agent CI from warning while inferring the repository name.
-- If Docker Desktop is running on macOS but Agent CI still cannot find Docker, set `DOCKER_HOST=unix:///Users/<your-user>/.docker/run/docker.sock` in `.env.agent-ci`. Agent CI reads `DOCKER_HOST` directly, while the Docker CLI may otherwise rely on the active Docker context.
+- If Docker Desktop is running on macOS but Agent CI still cannot find Docker, set `DOCKER_HOST=unix:///Users/<your-user>/.docker/run/docker.sock` in `.env.agent-ci`. The repo scripts export that value before `agent-ci` starts, which is necessary because `agent-ci` itself does not import `DOCKER_HOST` from `.env.agent-ci`.
 - Start a Docker runtime before running Agent CI.
 - Install the GitHub Actions runner image once with `docker pull ghcr.io/actions/actions-runner:latest`.
 
@@ -35,7 +35,7 @@ If local CI fails with `No such image: ghcr.io/actions/actions-runner:latest`, p
 
 If local CI warns with `No such remote 'origin'`, add `GITHUB_REPO=owner/repo` to `.env.agent-ci` and rerun the workflow.
 
-If local CI says Docker is not running even though Docker Desktop is open, add `DOCKER_HOST=unix:///Users/<your-user>/.docker/run/docker.sock` to `.env.agent-ci` and rerun the workflow.
+If local CI says Docker is not running even though Docker Desktop is open, add `DOCKER_HOST=unix:///Users/<your-user>/.docker/run/docker.sock` to `.env.agent-ci` and rerun the workflow through the repo script so that value is exported before `agent-ci` starts.
 
 ### Commands
 
@@ -103,6 +103,6 @@ Use this expectation for routine changes:
 - Use `npm run quality:gate:fast` for quicker local iteration when browser coverage is not the immediate focus.
 - `npm run ci:local:quiet` should also pass before proposing or landing the change.
 
-The quality gate currently runs the fast gate first, then the Playwright browser gate. The local and remote CI workflow runs separate fast and browser jobs, with repository-shape validation included in the fast job. The repo's local CI scripts now call the pinned `agent-ci` binary directly instead of going through a custom wrapper or ad hoc `npx` usage, and local browser installation should also go through the pinned `npm run playwright:install` script.
+The quality gate currently runs the fast gate first, then the Playwright browser gate. The local and remote CI workflow runs separate fast and browser jobs, with repository-shape validation included in the fast job. The repo's local CI scripts call the pinned `agent-ci` binary directly after sourcing `.env.agent-ci`, rather than going through a custom wrapper or ad hoc `npx` usage, and local browser installation should also go through the pinned `npm run playwright:install` script.
 
 Treat the browser gate as a seeded-fixture check, not a live provider-integration check. If Playwright needs a new account, connection, or queue baseline, add it to `npm run e2e:prepare` instead of wiring browser tests through real provider validation flows. Provider token validation should stay covered by mocked unit and route tests.
