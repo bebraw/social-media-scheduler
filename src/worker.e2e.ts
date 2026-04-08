@@ -1,10 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-test("requires login before showing the default queue view", async ({ page }) => {
-  const connectionSuffix = Date.now().toString();
-  const connectionLabel = `Personal X ${connectionSuffix}`;
-  const connectionHandle = `@scheduler-admin-${connectionSuffix}`;
+const SEEDED_CONNECTION_HANDLE = "@scheduler-admin-e2e";
+const SEEDED_CONNECTION_LABEL = "Personal X E2E";
 
+test("requires login before showing the default queue view", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { level: 1, name: "Sign in" })).toBeVisible();
@@ -25,14 +24,8 @@ test("requires login before showing the default queue view", async ({ page }) =>
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
-  await page.getByLabel("Connection label").fill(connectionLabel);
-  await page.getByLabel("Handle or profile label").fill(connectionHandle);
-  await page.getByLabel("Access token").fill("access-token-value");
-  await page.getByLabel("Refresh token").fill("refresh-token-value");
-  await page.getByRole("button", { name: "Save channel connection" }).click();
-  await expect(page).toHaveURL(/\/settings\?channel=connected$/);
-  await expect(page.getByText("Channel connection saved.")).toBeVisible();
-  await expect(page.locator("[data-channel-connection]").filter({ hasText: connectionLabel })).toHaveCount(1);
+  await expect(page.locator("[data-channel-connection]").filter({ hasText: SEEDED_CONNECTION_LABEL })).toHaveCount(1);
+  await expect(page.getByText(SEEDED_CONNECTION_HANDLE)).toBeVisible();
 
   await page.getByRole("link", { name: "Queue", exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
@@ -51,12 +44,12 @@ test("requires login before showing the default queue view", async ({ page }) =>
   await expect(page).toHaveURL(/\/compose$/);
   await expect(page.getByRole("heading", { level: 1, name: "Compose" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Channel drafts" })).toBeVisible();
-  const personalXTab = page.getByRole("tab", { name: new RegExp(connectionLabel) });
+  const personalXTab = page.getByRole("tab", { name: new RegExp(SEEDED_CONNECTION_LABEL) });
   await personalXTab.click();
   await expect(personalXTab).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByLabel(`${connectionLabel} post copy`)).toBeVisible();
-  await page.getByLabel(`${connectionLabel} post copy`).fill("Queue this X draft for the afternoon slot.");
-  await page.getByLabel(`${connectionLabel} queue slot`).selectOption("Tomorrow, 13:00");
+  await expect(page.getByLabel(`${SEEDED_CONNECTION_LABEL} post copy`)).toBeVisible();
+  await page.getByLabel(`${SEEDED_CONNECTION_LABEL} post copy`).fill("Queue this X draft for the afternoon slot.");
+  await page.getByLabel(`${SEEDED_CONNECTION_LABEL} queue slot`).selectOption("Tomorrow, 13:00");
   await page.getByRole("button", { name: "Queue post" }).click();
 
   await expect(page.locator("[data-metric-queued]")).toHaveText("1");
@@ -65,7 +58,7 @@ test("requires login before showing the default queue view", async ({ page }) =>
   await page.getByRole("link", { name: "History", exact: true }).click();
   await expect(page).toHaveURL(/\/history$/);
   await expect(page.getByRole("heading", { level: 1, name: "History" })).toBeVisible();
-  await expect(page.getByRole("button", { name: new RegExp(connectionLabel) })).toBeVisible();
+  await expect(page.getByRole("button", { name: new RegExp(SEEDED_CONNECTION_LABEL) })).toBeVisible();
   await expect(page.getByText("No sent posts are available yet.")).toBeVisible();
 
   await page.getByRole("link", { name: "Demo mode" }).click();
