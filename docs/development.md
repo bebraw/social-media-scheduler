@@ -23,6 +23,7 @@ This template is set up for the local Agent CI runner from `agent-ci.dev`.
 - Copy `.dev.vars.example` to `.dev.vars` and replace placeholder values when a project needs local secrets.
 - Copy `.env.agent-ci.example` to `.env.agent-ci` when you need machine-local Agent CI overrides. Agent CI loads that file automatically.
 - If your clone has no `origin` remote, set `GITHUB_REPO=owner/repo` in `.env.agent-ci` to stop Agent CI from warning while inferring the repository name.
+- If Docker Desktop is running on macOS but Agent CI still cannot find Docker, set `DOCKER_HOST=unix:///Users/<your-user>/.docker/run/docker.sock` in `.env.agent-ci`. Agent CI reads `DOCKER_HOST` directly, while the Docker CLI may otherwise rely on the active Docker context.
 - Start a Docker runtime before running Agent CI.
 - Install the GitHub Actions runner image once with `docker pull ghcr.io/actions/actions-runner:latest`.
 
@@ -33,6 +34,8 @@ The Worker config enables Wrangler's `nodejs_compat` compatibility flag. Keep th
 If local CI fails with `No such image: ghcr.io/actions/actions-runner:latest`, pull that image manually and re-run the workflow.
 
 If local CI warns with `No such remote 'origin'`, add `GITHUB_REPO=owner/repo` to `.env.agent-ci` and rerun the workflow.
+
+If local CI says Docker is not running even though Docker Desktop is open, add `DOCKER_HOST=unix:///Users/<your-user>/.docker/run/docker.sock` to `.env.agent-ci` and rerun the workflow.
 
 ### Commands
 
