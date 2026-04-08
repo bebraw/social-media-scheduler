@@ -10,7 +10,8 @@ The template README is the first surface contributors see. It should show the cu
 
 - **Primary document:** `README.md`
 - **Committed screenshot asset:** `docs/screenshots/home.png`
-- **Current workflow summary:** runtime, verification, and source layout notes in `README.md`
+- **Top-level scope:** product overview, screenshot, lightweight getting-started summary, and links into `docs/`
+- **Detailed workflows:** setup, development, and verification details live under `docs/`
 - **Update model:** manual refresh when the starter UI changes materially
 - **Non-goal:** no screenshot-specific package scripts or screenshot-sync workflows
 
@@ -26,16 +27,16 @@ The template README is the first surface contributors see. It should show the cu
 ### Definition of Done
 
 - [ ] The README includes a working application screenshot reference.
-- [ ] The README reflects the current runtime and verification commands.
+- [ ] The README points readers to the current setup and development docs.
 - [ ] The screenshot asset is committed in the repo.
 
 ### Regression Guardrails
 
 - `README.md` must reference a committed screenshot file that exists in the repo.
-- `README.md` should continue to describe the current starter source layout and verification flow accurately.
-- `README.md` should describe the current runtime pin source accurately when the repo toolchain changes.
+- `README.md` should stay user-facing and avoid duplicating detailed development workflow that already lives in `docs/`.
+- `README.md` should continue to describe the current starter scope accurately.
 - `README.md` should describe the supported host platform baseline accurately when local development constraints change.
-- `README.md` should point browser setup at the current pinned Playwright install script instead of an ad hoc command.
+- `README.md` should link to the current setup and development documents instead of sending readers to stale inline instructions.
 - The screenshot should continue to represent the current starter app surface closely enough to be useful.
 - Screenshot support must remain manual and lightweight unless a later ADR changes that rule.
 
@@ -56,8 +57,8 @@ The template README is the first surface contributors see. It should show the cu
 **Scenario: Contributor follows the README**
 
 - Given: the current template baseline
-- When: the contributor reads the runtime, verification, and source layout sections
-- Then: the commands, ports, and file locations match the current repo behavior
+- When: the contributor reads the overview and documentation links
+- Then: they can find the correct setup and development instructions without wading through detailed workflow notes in the README
 
 **Scenario: Starter UI changes materially**
 
