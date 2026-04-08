@@ -34,5 +34,6 @@
   ],
   "vars": {
     "BACKUP_PREFIX": "automated-backups",
+    "BACKUP_RETENTION_DAYS": "90",
   },
 }

@@ -33,7 +33,7 @@ The scheduler already writes automated exports to R2, but production operations 
 
 - Backup pruning must never delete artifacts newer than the configured retention window.
 - Restore SQL must reconstruct channel connection secret-key references deterministically from exported connection ids.
-- Restore must continue to support a review-first mode through `--print-sql`.
+- Restore must continue to support a review-first mode through `--print-sql`, and execution must require explicit operator intent plus an explicit local or remote target.
 - Backup exports must remain schema-versioned and reject unknown formats during restore.
 
 ### Verification
@@ -58,5 +58,5 @@ The scheduler already writes automated exports to R2, but production operations 
 **Scenario: Operator restores directly into D1**
 
 - Given: the operator has verified the backup export they want to apply
-- When: they run `npm run backup:restore -- --file ./scheduler-export.json --remote`
+- When: they run `npm run backup:restore -- --file ./scheduler-export.json --execute --remote`
 - Then: the script executes the generated restore SQL against the selected D1 database

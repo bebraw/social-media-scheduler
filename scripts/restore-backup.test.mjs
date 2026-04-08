@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRestoreSql, parseSchedulerDataExport } from "./restore-backup.mjs";
+import { buildRestoreSql, parseSchedulerDataExport, resolveRestoreExecutionPlan } from "./restore-backup.mjs";
 
 const backupExport = {
   app: "social-media-scheduler",
@@ -64,5 +64,19 @@ describe("restore-backup script", () => {
 
     expect(sql).not.toContain("DELETE FROM app_users;");
     expect(sql).toContain("INSERT INTO app_users");
+  });
+
+  it("requires explicit intent before executing restore SQL", () => {
+    expect(() => resolveRestoreExecutionPlan({ printSql: false })).toThrow("Choose --print-sql for review output or add --execute");
+    expect(() => resolveRestoreExecutionPlan({ local: true })).toThrow("Use --execute together with --local or --remote");
+    expect(() => resolveRestoreExecutionPlan({ execute: true })).toThrow("Choose --local or --remote when executing restore SQL.");
+    expect(resolveRestoreExecutionPlan({ execute: true, local: true })).toEqual({
+      execute: true,
+      target: "local",
+    });
+    expect(resolveRestoreExecutionPlan({ printSql: true })).toEqual({
+      execute: false,
+      target: null,
+    });
   });
 });

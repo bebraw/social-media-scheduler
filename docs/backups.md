@@ -41,7 +41,7 @@ npx wrangler r2 bucket create social-media-scheduler-backups
 
 ```jsonc
 "triggers": {
-  "crons": ["30 1 * * *"]
+  "crons": ["*/15 * * * *", "30 1 * * *"]
 },
 "r2_buckets": [
   {
@@ -50,7 +50,8 @@ npx wrangler r2 bucket create social-media-scheduler-backups
   }
 ],
 "vars": {
-  "BACKUP_PREFIX": "automated-backups"
+  "BACKUP_PREFIX": "automated-backups",
+  "BACKUP_RETENTION_DAYS": "90"
 }
 ```
 
@@ -92,19 +93,19 @@ Restore is now an operator task supported by a first-party script instead of han
 npm run backup:restore -- --file ./scheduler-export-2026-04-08.json --print-sql
 ```
 
-4. Restore into local D1 when ready:
+4. Restore into local D1 only when ready:
 
 ```bash
-npm run backup:restore -- --file ./scheduler-export-2026-04-08.json --local
+npm run backup:restore -- --file ./scheduler-export-2026-04-08.json --execute --local
 ```
 
 5. Restore into remote D1 only after you have reviewed the export and the generated SQL:
 
 ```bash
-npm run backup:restore -- --file ./scheduler-export-2026-04-08.json --remote
+npm run backup:restore -- --file ./scheduler-export-2026-04-08.json --execute --remote
 ```
 
-By default the restore tool truncates auth users, app state, channel connections, encrypted secrets, and login attempts before replaying the export. Use `--append` if you deliberately need an additive restore instead.
+By default the restore tool is review-only unless you add `--execute`. When you do execute it, the tool truncates auth users, app state, channel connections, encrypted secrets, and login attempts before replaying the export. Use `--append` if you deliberately need an additive restore instead.
 
 ## Retention
 

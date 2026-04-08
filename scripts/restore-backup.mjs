@@ -20,6 +20,14 @@ export function main(argv = process.argv.slice(2)) {
     process.exit(1);
   }
 
+  let executionPlan;
+  try {
+    executionPlan = resolveRestoreExecutionPlan(args);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+
   const fileContents = readFileSync(args.file, "utf8");
   const dataExport = parseSchedulerDataExport(fileContents);
   const sql = buildRestoreSql(dataExport, {
@@ -30,12 +38,12 @@ export function main(argv = process.argv.slice(2)) {
     process.stdout.write(`${sql}\n`);
   }
 
-  if (args.printSql && !args.local && !args.remote) {
+  if (!executionPlan.execute) {
     return;
   }
 
   const wranglerArgs = ["wrangler", "d1", "execute", args.database ?? DEFAULT_DATABASE_NAME];
-  if (args.remote) {
+  if (executionPlan.target === "remote") {
     wranglerArgs.push("--remote");
   } else {
     wranglerArgs.push("--local");
@@ -52,6 +60,32 @@ export function main(argv = process.argv.slice(2)) {
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
+}
+
+export function resolveRestoreExecutionPlan(args) {
+  if (!args.execute && (args.local || args.remote)) {
+    throw new Error("Use --execute together with --local or --remote when you want the restore script to modify D1.");
+  }
+
+  if (!args.execute && !args.printSql) {
+    throw new Error("Choose --print-sql for review output or add --execute with an explicit --local or --remote target.");
+  }
+
+  if (!args.execute) {
+    return {
+      execute: false,
+      target: null,
+    };
+  }
+
+  if (!args.local && !args.remote) {
+    throw new Error("Choose --local or --remote when executing restore SQL.");
+  }
+
+  return {
+    execute: true,
+    target: args.remote ? "remote" : "local",
+  };
 }
 
 export function parseSchedulerDataExport(fileContents) {
@@ -186,6 +220,10 @@ function parseArgs(argv) {
       args.append = true;
       continue;
     }
+    if (arg === "--execute") {
+      args.execute = true;
+      continue;
+    }
     if (arg === "--file") {
       args.file = argv[index + 1];
       index += 1;
@@ -218,13 +256,14 @@ function printUsage(exitCode) {
   const output = exitCode === 0 ? console.log : console.error;
   output(`Usage:
   npm run backup:restore -- --file ./scheduler-export.json --print-sql
-  npm run backup:restore -- --file ./scheduler-export.json --remote
-  npm run backup:restore -- --file ./scheduler-export.json --append --local
+  npm run backup:restore -- --file ./scheduler-export.json --execute --remote
+  npm run backup:restore -- --file ./scheduler-export.json --append --execute --local
 
 Options:
   --file        Path to a scheduler export JSON file
-  --local       Restore into the local D1 database (default when executing)
-  --remote      Restore into the remote D1 database
+  --execute     Execute the generated SQL against D1 instead of only printing it
+  --local       Restore into the local D1 database when used with --execute
+  --remote      Restore into the remote D1 database when used with --execute
   --append      Keep existing rows instead of truncating auth, state, secrets, and connections first
   --print-sql   Print the generated restore SQL in addition to optionally executing it`);
   process.exit(exitCode);
