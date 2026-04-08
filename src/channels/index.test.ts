@@ -6,11 +6,13 @@ import {
   buildAccessTokenSecretKey,
   buildRefreshTokenSecretKey,
   createChannelConnection,
+  deleteChannelConnection,
   getChannelConnection,
   listConfiguredProviders,
   listPublishingChannelConnections,
   loadChannelConnections,
   normalizeChannelConnectionDraft,
+  rotateChannelConnectionCredentials,
 } from "./index";
 
 describe("channel connections", () => {
@@ -248,5 +250,197 @@ describe("channel connections", () => {
         refreshToken: "",
       }),
     ).toThrow("Add an access token before saving the channel connection.");
+  });
+
+  it("rotates stored credentials in place and can clear a saved refresh token", async () => {
+    const db = createTestDatabase();
+    const env = createTestEnv({
+      APP_ENCRYPTION_SECRET: "dedicated-secret",
+    });
+    vi.spyOn(RestliClient.prototype, "get").mockResolvedValue({
+      data: {
+        id: "abc123",
+        localizedFirstName: "Example",
+        localizedLastName: "Member",
+      },
+    } as unknown as Awaited<ReturnType<RestliClient["get"]>>);
+
+    const connection = await createChannelConnection(db, env, {
+      channel: "linkedin",
+      label: "Company LinkedIn",
+      accountHandle: "Example Company",
+      accessToken: "access-token-value",
+      refreshToken: "refresh-token-value",
+    });
+
+    const rotatedConnection = await rotateChannelConnectionCredentials(db, env, {
+      accessToken: "rotated-access-token",
+      clearRefreshToken: true,
+      connectionId: connection.id,
+      refreshToken: "",
+    });
+
+    expect(rotatedConnection).toMatchObject({
+      accountHandle: "Example Member (abc123)",
+      hasRefreshToken: false,
+      id: connection.id,
+    });
+    await expect(loadEncryptedSecret(db, buildAccessTokenSecretKey(connection.id), "dedicated-secret")).resolves.toBe(
+      "rotated-access-token",
+    );
+    await expect(loadEncryptedSecret(db, buildRefreshTokenSecretKey(connection.id), "dedicated-secret")).resolves.toBeNull();
+  });
+
+  it("stores a replacement refresh token during rotation when one is submitted", async () => {
+    const db = createTestDatabase();
+    const env = createTestEnv({
+      APP_ENCRYPTION_SECRET: "dedicated-secret",
+    });
+    vi.spyOn(RestliClient.prototype, "get").mockResolvedValue({
+      data: {
+        id: "abc123",
+        localizedFirstName: "Example",
+        localizedLastName: "Member",
+      },
+    } as unknown as Awaited<ReturnType<RestliClient["get"]>>);
+
+    const connection = await createChannelConnection(db, env, {
+      channel: "linkedin",
+      label: "Company LinkedIn",
+      accountHandle: "Example Company",
+      accessToken: "access-token-value",
+      refreshToken: "refresh-token-value",
+    });
+
+    await rotateChannelConnectionCredentials(db, env, {
+      accessToken: "rotated-access-token",
+      connectionId: connection.id,
+      refreshToken: "replacement-refresh-token",
+    });
+
+    await expect(loadEncryptedSecret(db, buildRefreshTokenSecretKey(connection.id), "dedicated-secret")).resolves.toBe(
+      "replacement-refresh-token",
+    );
+  });
+
+  it("rejects rotations that would collide with another saved provider account", async () => {
+    const db = createTestDatabase();
+    const env = createTestEnv({
+      APP_ENCRYPTION_SECRET: "dedicated-secret",
+    });
+    const alphaConnection = await createChannelConnection(
+      db,
+      env,
+      {
+        channel: "x",
+        label: "Alpha X",
+        accountHandle: "temporary-alpha",
+        accessToken: "alpha-token",
+        refreshToken: "",
+      },
+      {
+        fetch: async () =>
+          new Response(
+            JSON.stringify({
+              data: {
+                id: "1",
+                username: "alpha",
+              },
+            }),
+            {
+              status: 200,
+              headers: {
+                "content-type": "application/json",
+              },
+            },
+          ),
+      },
+    );
+    const betaConnection = await createChannelConnection(
+      db,
+      env,
+      {
+        channel: "x",
+        label: "Beta X",
+        accountHandle: "temporary-beta",
+        accessToken: "beta-token",
+        refreshToken: "",
+      },
+      {
+        fetch: async () =>
+          new Response(
+            JSON.stringify({
+              data: {
+                id: "2",
+                username: "beta",
+              },
+            }),
+            {
+              status: 200,
+              headers: {
+                "content-type": "application/json",
+              },
+            },
+          ),
+      },
+    );
+
+    expect(alphaConnection.accountHandle).toBe("@alpha");
+    await expect(
+      rotateChannelConnectionCredentials(
+        db,
+        env,
+        {
+          accessToken: "colliding-token",
+          connectionId: betaConnection.id,
+          refreshToken: "",
+        },
+        {
+          fetch: async () =>
+            new Response(
+              JSON.stringify({
+                data: {
+                  id: "1",
+                  username: "alpha",
+                },
+              }),
+              {
+                status: 200,
+                headers: {
+                  "content-type": "application/json",
+                },
+              },
+            ),
+        },
+      ),
+    ).rejects.toThrow("already connected");
+  });
+
+  it("deletes saved connections and their encrypted secrets", async () => {
+    const db = createTestDatabase();
+    const env = createTestEnv({
+      APP_ENCRYPTION_SECRET: "dedicated-secret",
+    });
+    vi.spyOn(RestliClient.prototype, "get").mockResolvedValue({
+      data: {
+        id: "abc123",
+        localizedFirstName: "Example",
+        localizedLastName: "Member",
+      },
+    } as unknown as Awaited<ReturnType<RestliClient["get"]>>);
+
+    const connection = await createChannelConnection(db, env, {
+      channel: "linkedin",
+      label: "Company LinkedIn",
+      accountHandle: "Example Company",
+      accessToken: "access-token-value",
+      refreshToken: "refresh-token-value",
+    });
+
+    await expect(deleteChannelConnection(db, connection.id)).resolves.toBe(true);
+    await expect(deleteChannelConnection(db, connection.id)).resolves.toBe(false);
+    await expect(loadChannelConnections(db)).resolves.toEqual([]);
+    await expect(loadEncryptedSecret(db, buildAccessTokenSecretKey(connection.id), "dedicated-secret")).resolves.toBeNull();
+    await expect(loadEncryptedSecret(db, buildRefreshTokenSecretKey(connection.id), "dedicated-secret")).resolves.toBeNull();
   });
 });

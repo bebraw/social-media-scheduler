@@ -102,6 +102,17 @@ export async function deleteQueuedPost(db: D1Database, queuedPostId: string): Pr
   return true;
 }
 
+export async function deleteQueuedPostsForConnection(db: D1Database, connectionId: string): Promise<number> {
+  const queuedPosts = await loadQueuedPosts(db);
+  const filtered = queuedPosts.filter((post) => post.connectionId !== connectionId);
+  if (filtered.length === queuedPosts.length) {
+    return 0;
+  }
+
+  await saveQueuedPosts(db, filtered);
+  return queuedPosts.length - filtered.length;
+}
+
 export function countQueuedPostsPublishingToday(queuedPosts: QueuedPost[], schedules: ChannelPostingSchedule[], now: Date): number {
   const scheduleByChannel = new Map(schedules.map((schedule) => [schedule.channel, schedule]));
   const endOfDay = new Date(now.getTime());

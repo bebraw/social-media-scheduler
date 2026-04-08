@@ -990,6 +990,154 @@ describe("worker", () => {
     await expect(response.text()).resolves.toContain("Readonly users cannot change queued posts.");
   });
 
+  it("rotates channel credentials through the authenticated settings endpoint", async () => {
+    const db = createTestDatabase();
+    mockLinkedInProfileLookup();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    await createChannelConnection(
+      db,
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+      }),
+      {
+        channel: "linkedin",
+        label: "Company LinkedIn",
+        accountHandle: "Example Company",
+        accessToken: "access-token-value",
+        refreshToken: "refresh-token-value",
+      },
+    );
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+    const connection = (await loadChannelConnections(db))[0];
+
+    const response = await handleRequest(
+      new Request("http://example.com/settings/channels/rotate", {
+        method: "POST",
+        body: new URLSearchParams({
+          accessToken: "rotated-access-token",
+          clearRefreshToken: "true",
+          connectionId: connection?.id || "",
+          refreshToken: "",
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+      }),
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+        DB: db,
+      }),
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/settings?channel=rotated");
+    await expect(loadEncryptedSecret(db, `channel_connection:${connection?.id}:access_token`, "dedicated-secret")).resolves.toBe(
+      "rotated-access-token",
+    );
+  });
+
+  it("deletes connections and any queued posts tied to them", async () => {
+    const db = createTestDatabase();
+    mockLinkedInProfileLookup();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    await createChannelConnection(
+      db,
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+      }),
+      {
+        channel: "linkedin",
+        label: "Company LinkedIn",
+        accountHandle: "Example Company",
+        accessToken: "access-token-value",
+        refreshToken: "",
+      },
+    );
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+    const connection = (await loadChannelConnections(db))[0];
+
+    await handleRequest(
+      new Request("http://example.com/compose/queue", {
+        method: "POST",
+        body: new URLSearchParams({
+          body: "Queue this LinkedIn update.",
+          connectionId: connection?.id || "",
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    const response = await handleRequest(
+      new Request("http://example.com/settings/channels/delete", {
+        method: "POST",
+        body: new URLSearchParams({
+          connectionId: connection?.id || "",
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/settings?channel=deleted");
+    await expect(loadChannelConnections(db)).resolves.toEqual([]);
+    await expect(loadQueuedPosts(db)).resolves.toEqual([]);
+  });
+
+  it("rejects credential rotation from readonly users", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Readonly Scheduler",
+      password: "test-password-123",
+      role: "readonly",
+    });
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Readonly Scheduler",
+      role: "readonly",
+    });
+
+    const response = await handleRequest(
+      new Request("http://example.com/settings/channels/rotate", {
+        method: "POST",
+        body: new URLSearchParams({
+          accessToken: "rotated-access-token",
+          connectionId: "missing-connection",
+          refreshToken: "",
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.text()).resolves.toContain("Readonly users cannot change channel settings.");
+  });
+
   it("returns a JSON health response", async () => {
     const response = await handleRequest(new Request("http://example.com/api/health"), createTestEnv());
 
@@ -1006,6 +1154,8 @@ describe("worker", () => {
         "/queue/delete",
         "/settings",
         "/settings/channels",
+        "/settings/channels/rotate",
+        "/settings/channels/delete",
         "/posting-schedule",
         "/login",
         "/api/health",

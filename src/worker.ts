@@ -15,14 +15,17 @@ import { runAutomatedBackup } from "./backup";
 import {
   ChannelConnectionValidationError,
   createChannelConnection,
+  deleteChannelConnection,
   getDefaultChannelConnectionDraft,
   listConfiguredProviders,
   loadChannelConnections,
+  rotateChannelConnectionCredentials,
 } from "./channels";
 import { loadSentPostHistory } from "./history";
 import {
   countQueuedPostsPublishingToday,
   deleteQueuedPost,
+  deleteQueuedPostsForConnection,
   loadQueuedPosts,
   publishDueQueuedPosts,
   QueueValidationError,
@@ -242,6 +245,8 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
       renderSettingsPage({
         canEdit: !isReadonlyUser(sessionUser),
         connections: await loadChannelConnections(env.DB),
+        deleted: url.searchParams.get("channel") === "deleted",
+        rotated: url.searchParams.get("channel") === "rotated",
         saved: url.searchParams.get("channel") === "connected",
         user: sessionUser,
       }),
@@ -297,6 +302,70 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
         error instanceof ChannelConnectionValidationError ? 400 : 500,
       );
     }
+  }
+
+  if (url.pathname === "/settings/channels/rotate" && request.method === "POST") {
+    if (!env.DB) {
+      return new Response("D1 binding is missing.", { status: 500 });
+    }
+    if (isReadonlyUser(sessionUser)) {
+      return new Response("Readonly users cannot change channel settings.", { status: 403 });
+    }
+
+    if (isE2ESeededStateOnlyConfigured(env)) {
+      return htmlResponse(
+        renderSettingsPage({
+          canEdit: true,
+          connections: await loadChannelConnections(env.DB),
+          error:
+            "The Playwright e2e server uses seeded channel connections only. Update npm run e2e:prepare fixtures instead of rotating live provider connections in browser tests.",
+          user: sessionUser,
+        }),
+        409,
+      );
+    }
+
+    const formData = await request.formData();
+
+    try {
+      await rotateChannelConnectionCredentials(env.DB, env, {
+        accessToken: String(formData.get("accessToken") || ""),
+        clearRefreshToken: String(formData.get("clearRefreshToken") || "").trim().length > 0,
+        connectionId: String(formData.get("connectionId") || ""),
+        refreshToken: String(formData.get("refreshToken") || ""),
+      });
+      return redirectResponse("/settings?channel=rotated");
+    } catch (error) {
+      const message = error instanceof ChannelConnectionValidationError ? error.message : "Unable to rotate channel credentials.";
+
+      return htmlResponse(
+        renderSettingsPage({
+          canEdit: true,
+          connections: await loadChannelConnections(env.DB),
+          error: message,
+          user: sessionUser,
+        }),
+        error instanceof ChannelConnectionValidationError ? 400 : 500,
+      );
+    }
+  }
+
+  if (url.pathname === "/settings/channels/delete" && request.method === "POST") {
+    if (!env.DB) {
+      return new Response("D1 binding is missing.", { status: 500 });
+    }
+    if (isReadonlyUser(sessionUser)) {
+      return new Response("Readonly users cannot change channel settings.", { status: 403 });
+    }
+
+    const formData = await request.formData();
+    const connectionId = String(formData.get("connectionId") || "").trim();
+    if (connectionId) {
+      await deleteChannelConnection(env.DB, connectionId);
+      await deleteQueuedPostsForConnection(env.DB, connectionId);
+    }
+
+    return redirectResponse("/settings?channel=deleted");
   }
 
   if (url.pathname === "/compose") {

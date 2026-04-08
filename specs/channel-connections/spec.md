@@ -10,7 +10,7 @@ Operators may need multiple accounts on the same provider, such as more than one
 
 ### Architecture
 
-- **Entry points:** authenticated `GET /settings` renders the connection management view and authenticated `POST /settings/channels` validates plus stores new channel connections.
+- **Entry points:** authenticated `GET /settings` renders the connection management view, authenticated `POST /settings/channels` validates plus stores new channel connections, authenticated `POST /settings/channels/rotate` rotates saved credentials, and authenticated `POST /settings/channels/delete` revokes a saved connection.
 - **Source layout:** `src/channels/` owns connection validation and D1 persistence, `src/providers/` owns provider-specific connection preparation, `src/secrets/` owns encrypted `app_secrets` storage, and `src/views/settings.ts` renders the operator-facing settings UI.
 - **Data models:** D1 `channel_connections` stores readable metadata per connected account, while D1 `app_secrets` stores encrypted token-like values keyed per connection.
 - **Dependencies:** the feature depends on authenticated sessions, D1, a configured `APP_ENCRYPTION_SECRET` or `SESSION_SECRET` fallback for encryption, and a Worker runtime with Cloudflare `nodejs_compat` enabled because the selected provider SDKs use Node built-ins.
@@ -30,6 +30,8 @@ Operators may need multiple accounts on the same provider, such as more than one
 - [ ] Operators can save multiple connections for the same provider.
 - [ ] The authenticated Queue, Compose, and History views derive their visible connections from the saved channel setup instead of a fixed provider list.
 - [ ] `POST /settings/channels` validates the provider, label, account handle/profile label, and credential input.
+- [ ] `POST /settings/channels/rotate` validates a replacement credential set for an existing connection and updates encrypted secrets in place.
+- [ ] `POST /settings/channels/delete` removes the saved connection and its encrypted secrets.
 - [ ] Bluesky connections validate the submitted handle and app password before the connection is saved.
 - [ ] Bluesky connections store returned session tokens instead of persisting the submitted app password.
 - [ ] X connections validate the submitted user-context access token before the connection is saved.
@@ -47,11 +49,13 @@ Operators may need multiple accounts on the same provider, such as more than one
 - The authenticated compose page must not render fixed provider draft tabs when no matching connection exists.
 - The authenticated history page must not render fixed provider filters when no matching connection exists.
 - Duplicate connections for the same provider and account handle must be rejected.
+- Credential rotation must not create duplicate provider/account pairs.
 - Bluesky must not store the submitted app password after exchanging it for session tokens.
 - X must not trust a manually entered handle when the validated token resolves to a different authenticated username.
 - LinkedIn must not trust a manually entered profile label when the validated token resolves to a different authenticated member profile.
 - Encryption must remain reversible only with the configured app-level encryption secret.
 - The settings page must never render stored secret values back into the UI.
+- Revoking a connection must remove any queued posts that still point at that deleted connection.
 - Backups may include encrypted credentials, but never the encryption secret itself.
 
 ### Verification
@@ -96,3 +100,15 @@ Operators may need multiple accounts on the same provider, such as more than one
 - Given: the authenticated user has the `readonly` role
 - When: they submit `POST /settings/channels`
 - Then: the Worker rejects the request with HTTP 403
+
+**Scenario: Operator rotates a saved connection**
+
+- Given: the operator is already authenticated and a channel connection already exists
+- When: they submit `POST /settings/channels/rotate` with a replacement access token
+- Then: the app validates the replacement credential set and updates the encrypted secret values for that existing connection
+
+**Scenario: Operator deletes a saved connection**
+
+- Given: the operator is already authenticated and a channel connection already exists
+- When: they submit `POST /settings/channels/delete`
+- Then: the Worker removes the saved connection, deletes its encrypted secrets, and removes queued posts that depended on that connection

@@ -196,6 +196,32 @@ class TestPreparedStatement implements D1PreparedStatement {
       return { success: true, meta: { changes: 1 } };
     }
 
+    if (
+      this.normalizedQuery.startsWith(
+        "update channel_connections set account_handle = ?, refresh_token_secret_key = ?, updated_at = ? where id = ?",
+      )
+    ) {
+      const [accountHandle, refreshTokenSecretKey, updatedAt, connectionId] = this.bindings as [string, string | null, string, string];
+      const existing = this.state.channelConnections.get(connectionId);
+      if (!existing) {
+        return { success: true, meta: { changes: 0 } };
+      }
+
+      this.state.channelConnections.set(connectionId, {
+        ...existing,
+        accountHandle,
+        refreshTokenSecretKey,
+        updatedAt,
+      });
+      return { success: true, meta: { changes: 1 } };
+    }
+
+    if (this.normalizedQuery.startsWith("delete from channel_connections where id = ?")) {
+      const [connectionId] = this.bindings as [string];
+      this.state.channelConnections.delete(connectionId);
+      return { success: true, meta: { changes: 1 } };
+    }
+
     throw new Error(`Unsupported run query in test database: ${this.normalizedQuery}`);
   }
 

@@ -6,6 +6,8 @@ const BASE_APP_ROUTES = [
   { path: "/queue/delete", purpose: "Protected queued-post deletion endpoint" },
   { path: "/settings", purpose: "Protected channel settings view for authenticated users" },
   { path: "/settings/channels", purpose: "Protected per-connection channel setup endpoint" },
+  { path: "/settings/channels/rotate", purpose: "Protected per-connection credential rotation endpoint" },
+  { path: "/settings/channels/delete", purpose: "Protected per-connection deletion endpoint" },
   { path: "/posting-schedule", purpose: "Protected per-channel posting schedule update endpoint" },
   { path: "/login", purpose: "Sign in with a D1-backed local account" },
   { path: "/api/health", purpose: "JSON health endpoint for tooling and smoke tests" },

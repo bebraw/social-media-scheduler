@@ -2,7 +2,7 @@ import type { Env } from "../app-env";
 import type { D1Database } from "../db-core";
 import { prepareChannelConnectionDraft, ProviderConnectionValidationError, type ProviderAdapterContext } from "../providers";
 import { getChannelConstraint, type QueueChannel } from "../queue/constraints";
-import { deleteEncryptedSecret, resolveAppEncryptionSecret, saveEncryptedSecret } from "../secrets";
+import { deleteEncryptedSecret, loadEncryptedSecret, resolveAppEncryptionSecret, saveEncryptedSecret } from "../secrets";
 
 interface ChannelConnectionRow {
   access_token_secret_key: string;
@@ -42,6 +42,13 @@ export interface ChannelConnectionDraft {
   refreshToken: string;
 }
 
+export interface ChannelCredentialRotationInput {
+  accessToken: string;
+  clearRefreshToken?: boolean;
+  connectionId: string;
+  refreshToken: string;
+}
+
 export class ChannelConnectionValidationError extends Error {
   constructor(message: string) {
     super(message);
@@ -78,25 +85,19 @@ export async function loadChannelConnections(db: D1Database): Promise<ChannelCon
 }
 
 export async function getChannelConnection(db: D1Database, connectionId: string): Promise<ChannelConnection | null> {
-  const row = await db
-    .prepare(
-      "SELECT id, channel, label, account_handle, access_token_secret_key, refresh_token_secret_key, created_at, updated_at FROM channel_connections WHERE id = ?",
-    )
-    .bind(connectionId)
-    .first<ChannelConnectionRow>();
-
-  if (!row) {
+  const connection = await getStoredPublishingChannelConnection(db, connectionId);
+  if (!connection) {
     return null;
   }
 
   return {
-    accountHandle: row.account_handle,
-    channel: row.channel,
-    createdAt: row.created_at,
-    hasRefreshToken: typeof row.refresh_token_secret_key === "string" && row.refresh_token_secret_key.length > 0,
-    id: row.id,
-    label: row.label,
-    updatedAt: row.updated_at,
+    accountHandle: connection.accountHandle,
+    channel: connection.channel,
+    createdAt: connection.createdAt,
+    hasRefreshToken: connection.hasRefreshToken,
+    id: connection.id,
+    label: connection.label,
+    updatedAt: connection.updatedAt,
   };
 }
 
@@ -184,6 +185,87 @@ export async function createChannelConnection(
     label: prepared.label,
     updatedAt: timestamp,
   };
+}
+
+export async function rotateChannelConnectionCredentials(
+  db: D1Database,
+  env: Pick<Env, "APP_ENCRYPTION_SECRET" | "SESSION_SECRET">,
+  input: ChannelCredentialRotationInput,
+  context: ProviderAdapterContext = {},
+): Promise<ChannelConnection> {
+  const connection = await getStoredPublishingChannelConnection(db, input.connectionId);
+  if (!connection) {
+    throw new ChannelConnectionValidationError("Choose a saved channel connection before rotating credentials.");
+  }
+
+  const encryptionSecret = resolveAppEncryptionSecret(env);
+  const submittedRefreshToken = input.refreshToken.trim();
+  const existingRefreshToken =
+    submittedRefreshToken.length === 0 && !input.clearRefreshToken && connection.refreshTokenSecretKey
+      ? await loadEncryptedSecret(db, connection.refreshTokenSecretKey, encryptionSecret)
+      : null;
+  const normalized = normalizeChannelConnectionDraft({
+    accessToken: input.accessToken,
+    accountHandle: connection.accountHandle,
+    channel: connection.channel,
+    label: connection.label,
+    refreshToken: submittedRefreshToken || existingRefreshToken || "",
+  });
+  const prepared = await prepareNormalizedDraft(normalized, context);
+  const conflictingConnection = await db
+    .prepare("SELECT id FROM channel_connections WHERE channel = ? AND account_handle = ? COLLATE NOCASE")
+    .bind(prepared.channel, prepared.accountHandle)
+    .first<ChannelConnectionLookupRow>();
+
+  if (conflictingConnection?.id && conflictingConnection.id !== connection.id) {
+    throw new ChannelConnectionValidationError(
+      `${getChannelConstraint(prepared.channel).name} account ${prepared.accountHandle} is already connected.`,
+    );
+  }
+
+  const nextRefreshToken =
+    submittedRefreshToken.length > 0 ? prepared.refreshToken : input.clearRefreshToken ? "" : existingRefreshToken || "";
+  const nextRefreshTokenSecretKey = nextRefreshToken ? connection.refreshTokenSecretKey || buildRefreshTokenSecretKey(connection.id) : null;
+  const timestamp = new Date().toISOString();
+
+  await saveEncryptedSecret(db, connection.accessTokenSecretKey, prepared.accessToken, encryptionSecret);
+  if (nextRefreshTokenSecretKey && nextRefreshToken) {
+    await saveEncryptedSecret(db, nextRefreshTokenSecretKey, nextRefreshToken, encryptionSecret);
+  }
+
+  await db
+    .prepare("UPDATE channel_connections SET account_handle = ?, refresh_token_secret_key = ?, updated_at = ? WHERE id = ?")
+    .bind(prepared.accountHandle, nextRefreshTokenSecretKey, timestamp, connection.id)
+    .run();
+
+  if (!nextRefreshToken && connection.refreshTokenSecretKey) {
+    await deleteEncryptedSecret(db, connection.refreshTokenSecretKey);
+  }
+
+  return {
+    accountHandle: prepared.accountHandle,
+    channel: connection.channel,
+    createdAt: connection.createdAt,
+    hasRefreshToken: Boolean(nextRefreshTokenSecretKey),
+    id: connection.id,
+    label: connection.label,
+    updatedAt: timestamp,
+  };
+}
+
+export async function deleteChannelConnection(db: D1Database, connectionId: string): Promise<boolean> {
+  const connection = await getStoredPublishingChannelConnection(db, connectionId);
+  if (!connection) {
+    return false;
+  }
+
+  await db.prepare("DELETE FROM channel_connections WHERE id = ?").bind(connectionId).run();
+  await deleteEncryptedSecret(db, connection.accessTokenSecretKey);
+  if (connection.refreshTokenSecretKey) {
+    await deleteEncryptedSecret(db, connection.refreshTokenSecretKey);
+  }
+
+  return true;
 }
 
 export function normalizeChannelConnectionDraft(input: ChannelConnectionDraft): {
@@ -276,4 +358,29 @@ async function prepareNormalizedDraft(
 
     throw error;
   }
+}
+
+function mapStoredPublishingChannelConnection(row: ChannelConnectionRow): PublishingChannelConnection {
+  return {
+    accessTokenSecretKey: row.access_token_secret_key,
+    accountHandle: row.account_handle,
+    channel: row.channel,
+    createdAt: row.created_at,
+    hasRefreshToken: typeof row.refresh_token_secret_key === "string" && row.refresh_token_secret_key.length > 0,
+    id: row.id,
+    label: row.label,
+    refreshTokenSecretKey: row.refresh_token_secret_key,
+    updatedAt: row.updated_at,
+  };
+}
+
+async function getStoredPublishingChannelConnection(db: D1Database, connectionId: string): Promise<PublishingChannelConnection | null> {
+  const row = await db
+    .prepare(
+      "SELECT id, channel, label, account_handle, access_token_secret_key, refresh_token_secret_key, created_at, updated_at FROM channel_connections WHERE id = ?",
+    )
+    .bind(connectionId)
+    .first<ChannelConnectionRow>();
+
+  return row ? mapStoredPublishingChannelConnection(row) : null;
 }

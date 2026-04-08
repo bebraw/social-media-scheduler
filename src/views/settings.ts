@@ -8,13 +8,15 @@ import { escapeHtml } from "./shared";
 interface SettingsPageOptions {
   canEdit: boolean;
   connections: ChannelConnection[];
+  deleted?: boolean;
   draft?: Partial<ChannelConnectionDraft>;
   error?: string;
+  rotated?: boolean;
   saved?: boolean;
   user: SessionUser;
 }
 
-export function renderSettingsPage({ canEdit, connections, draft, error, saved, user }: SettingsPageOptions): string {
+export function renderSettingsPage({ canEdit, connections, deleted, draft, error, rotated, saved, user }: SettingsPageOptions): string {
   const formDraft = {
     ...getDefaultChannelConnectionDraft(),
     ...draft,
@@ -35,10 +37,20 @@ export function renderSettingsPage({ canEdit, connections, draft, error, saved, 
             ? '<p class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">Channel connection saved.</p>'
             : ""
         }
+        ${
+          rotated
+            ? '<p class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">Channel credentials rotated.</p>'
+            : ""
+        }
+        ${
+          deleted
+            ? '<p class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">Channel connection deleted.</p>'
+            : ""
+        }
         ${error ? `<p class="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">${escapeHtml(error)}</p>` : ""}
         ${
           connections.length > 0
-            ? `<div class="mt-5 grid gap-3">${connections.map((connection) => renderConnectionCard(connection)).join("")}</div>`
+            ? `<div class="mt-5 grid gap-3">${connections.map((connection) => renderConnectionCard(connection, canEdit)).join("")}</div>`
             : '<p class="mt-5 rounded-xl border border-dashed border-app-line bg-app-canvas/50 px-4 py-4 text-sm leading-6 text-app-text-soft">No channel connections are saved yet. Add only the accounts you actually need so the workspace stays intentional.</p>'
         }
       `)}
@@ -51,7 +63,7 @@ export function renderSettingsPage({ canEdit, connections, draft, error, saved, 
         ${
           canEdit
             ? renderConnectionForm(formDraft)
-            : '<p class="mt-4 rounded-xl border border-app-line bg-app-canvas/50 px-4 py-4 text-sm leading-6 text-app-text-soft">Readonly users can inspect saved channel connections, but only editors can add or rotate credentials.</p>'
+            : '<p class="mt-4 rounded-xl border border-app-line bg-app-canvas/50 px-4 py-4 text-sm leading-6 text-app-text-soft">Readonly users can inspect saved channel connections, but only editors can add, rotate, or revoke credentials.</p>'
         }
       `)}
     </div>`,
@@ -61,7 +73,7 @@ export function renderSettingsPage({ canEdit, connections, draft, error, saved, 
   });
 }
 
-function renderConnectionCard(connection: ChannelConnection): string {
+function renderConnectionCard(connection: ChannelConnection, canEdit: boolean): string {
   const channel = getChannelConstraint(connection.channel);
 
   return `<article class="rounded-xl border border-app-line bg-app-canvas/40 p-4" data-channel-connection="${escapeHtml(connection.id)}">
@@ -79,6 +91,36 @@ function renderConnectionCard(connection: ChannelConnection): string {
         <p class="mt-1"><span class="font-medium text-app-text">Updated:</span> ${escapeHtml(formatTimestamp(connection.updatedAt))}</p>
       </div>
     </div>
+    ${
+      canEdit
+        ? `<div class="mt-4 grid gap-4 border-t border-app-line pt-4 lg:grid-cols-[1fr_auto]">
+      <form class="grid gap-3" method="post" action="/settings/channels/rotate">
+        <input type="hidden" name="connectionId" value="${escapeHtml(connection.id)}">
+        <div class="grid gap-3 sm:grid-cols-2">
+          <label class="grid gap-2 text-sm font-medium">
+            <span>New access token</span>
+            <input class="rounded-xl border border-app-line bg-white px-4 py-3 text-sm text-app-text focus:border-app-accent focus:outline-none focus:ring-2 focus:ring-app-accent/10" name="accessToken" type="password" autocomplete="off">
+          </label>
+          <label class="grid gap-2 text-sm font-medium">
+            <span>New refresh token</span>
+            <input class="rounded-xl border border-app-line bg-white px-4 py-3 text-sm text-app-text focus:border-app-accent focus:outline-none focus:ring-2 focus:ring-app-accent/10" name="refreshToken" type="password" autocomplete="off">
+          </label>
+        </div>
+        <label class="flex items-center gap-2 text-xs text-app-text-soft">
+          <input name="clearRefreshToken" type="checkbox" value="true">
+          <span>Clear the saved refresh token when the new credential set does not include one.</span>
+        </label>
+        <div class="flex flex-wrap gap-3">
+          ${renderButton({ label: "Rotate credentials", type: "submit", variant: "secondary" })}
+        </div>
+      </form>
+      <form method="post" action="/settings/channels/delete">
+        <input type="hidden" name="connectionId" value="${escapeHtml(connection.id)}">
+        ${renderButton({ className: "bg-white hover:bg-rose-50", label: "Delete connection", type: "submit" })}
+      </form>
+    </div>`
+        : ""
+    }
   </article>`;
 }
 

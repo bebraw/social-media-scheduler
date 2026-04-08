@@ -77,6 +77,8 @@ test("serves the health endpoint", async ({ request }) => {
       "/queue/delete",
       "/settings",
       "/settings/channels",
+      "/settings/channels/rotate",
+      "/settings/channels/delete",
       "/posting-schedule",
       "/login",
       "/api/health",

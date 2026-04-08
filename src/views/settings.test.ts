@@ -32,13 +32,17 @@ describe("renderSettingsPage", () => {
     expect(html).toContain("for X, use a user-context access token");
     expect(html).toContain("for LinkedIn, use a member access token");
     expect(html).toContain("Save channel connection");
+    expect(html).toContain("Rotate credentials");
+    expect(html).toContain("Delete connection");
   });
 
   it("renders saved and error states", () => {
     const html = renderSettingsPage({
       canEdit: true,
       connections: [],
+      deleted: true,
       error: "Add an access token before saving the channel connection.",
+      rotated: true,
       saved: true,
       user: {
         name: "Scheduler Admin",
@@ -47,6 +51,8 @@ describe("renderSettingsPage", () => {
     });
 
     expect(html).toContain("Channel connection saved.");
+    expect(html).toContain("Channel credentials rotated.");
+    expect(html).toContain("Channel connection deleted.");
     expect(html).toContain("Add an access token before saving the channel connection.");
   });
 });
