@@ -12,6 +12,7 @@ describe("renderPostingSchedulePanel", () => {
     expect(html).toContain("Posting schedule");
     expect(html).toContain("Cloudflare cron expression");
     expect(html).toContain("LinkedIn UTC time");
+    expect(html).toContain("15-minute increments");
     expect(html).toContain('data-posting-cron="linkedin"');
     expect(html).toContain("Save posting schedule");
   });

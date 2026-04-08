@@ -13,6 +13,7 @@ Operators need to adjust that cadence per channel in a way the scheduled runtime
 - **Entry points:** authenticated `GET /` renders the schedule editor for configured providers and authenticated `POST /posting-schedule` persists updates.
 - **Source layout:** `src/schedule/` owns the per-channel schedule model, D1 `app_state` persistence, and Cloudflare cron mapping. `src/views/posting-schedule.ts` renders the editor used on the Queue page.
 - **Data model:** D1 `app_state` stores one `posting_schedules_v1` entry containing per-channel Cloudflare-cron-compatible expressions. The UI derives weekday and UTC time controls from that stored form.
+- **Poll alignment:** saved channel times must align with the fixed 15-minute publish poll so every stored schedule is actually reachable by the runtime.
 - **Deployment boundary:** saved schedules do not mutate `wrangler.jsonc` automatically. The deployed Worker keeps a fixed publishing poll plus daily backup cron, and the scheduled runtime evaluates the saved per-channel schedule state inside that fixed poller.
 
 ### Anti-Patterns
@@ -38,7 +39,7 @@ Operators need to adjust that cadence per channel in a way the scheduled runtime
 
 - Saved schedule data must remain Cloudflare-cron-compatible and round-trip back into the Queue editor.
 - Missing or invalid stored schedule state must fall back to the checked-in default schedule set.
-- Every editable channel must keep at least one selected weekday and a valid `HH:MM` UTC time.
+- Every editable channel must keep at least one selected weekday and a valid `HH:MM` UTC time aligned to the 15-minute publishing poll.
 - Queue route auth rules must apply to posting schedule edits too.
 - The queue page must not render schedule cards for providers that are not currently configured in Settings.
 - The fixed publish poll must keep using the saved schedule state as its source of truth.

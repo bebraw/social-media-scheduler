@@ -90,6 +90,12 @@ export function buildPostingSchedule(input: { channel: QueueChannel; time: strin
     throw new PostingScheduleValidationError(`Choose a valid UTC time for ${getChannelLabel(input.channel)}.`);
   }
 
+  if (!isPollAlignedTime(time)) {
+    throw new PostingScheduleValidationError(
+      `Choose a UTC time aligned to the 15-minute publishing poll for ${getChannelLabel(input.channel)}.`,
+    );
+  }
+
   if (weekdays.length === 0) {
     throw new PostingScheduleValidationError(`Choose at least one posting day for ${getChannelLabel(input.channel)}.`);
   }
@@ -108,6 +114,10 @@ export function buildCloudflareCron(input: { time: string; weekdays: string[] })
 
   if (!time) {
     throw new PostingScheduleValidationError("Posting schedules require a valid UTC time.");
+  }
+
+  if (!isPollAlignedTime(time)) {
+    throw new PostingScheduleValidationError("Posting schedules require a UTC time aligned to the 15-minute publishing poll.");
   }
 
   if (weekdays.length === 0) {
@@ -214,6 +224,9 @@ function parseCloudflareCron(cron: string): { time: string; weekdays: PostingSch
   if (!Number.isInteger(minute) || !Number.isInteger(hour) || minute < 0 || minute > 59 || hour < 0 || hour > 23) {
     return null;
   }
+  if (minute % 15 !== 0) {
+    return null;
+  }
 
   const weekdays = normalizeWeekdays((dayOfWeekField || "").split(","));
   if (weekdays.length === 0) {
@@ -235,6 +248,12 @@ function normalizeTime(value: string): string | null {
   const normalized = value.trim();
   const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(normalized);
   return match ? `${match[1]}:${match[2]}` : null;
+}
+
+function isPollAlignedTime(value: string): boolean {
+  const [, minuteText = "0"] = value.split(":");
+  const minute = Number.parseInt(minuteText, 10);
+  return Number.isInteger(minute) && minute % 15 === 0;
 }
 
 function normalizeWeekdays(values: string[]): PostingScheduleWeekday[] {

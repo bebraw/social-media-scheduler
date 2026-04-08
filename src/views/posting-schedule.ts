@@ -16,7 +16,7 @@ export function renderPostingSchedulePanel({ canEdit, error, saved, schedules }:
       className: "items-start",
       description:
         schedules.length > 0
-          ? "Set the weekly UTC posting window for each configured provider. Each saved schedule is stored as a Cloudflare cron expression."
+          ? "Set the weekly UTC posting window for each configured provider in 15-minute increments. Each saved schedule is stored as a Cloudflare cron expression."
           : "Posting schedules appear after at least one channel connection is configured in Settings.",
       title: "Posting schedule",
     })}
@@ -32,7 +32,7 @@ export function renderPostingSchedulePanel({ canEdit, error, saved, schedules }:
         : `<form class="mt-5 grid gap-4" method="post" action="/posting-schedule">
       ${schedules.map((schedule) => renderPostingScheduleCard(schedule, canEdit)).join("")}
       <div class="flex flex-col gap-3 border-t border-app-line pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <p class="text-sm leading-6 text-app-text-soft">These saved schedules now drive the production publishing poller directly. Keep the fixed Worker cron triggers in deployment config and edit channel timing here.</p>
+        <p class="text-sm leading-6 text-app-text-soft">These saved schedules now drive the production publishing poller directly. Use 15-minute UTC increments here and keep the fixed Worker cron triggers in deployment config.</p>
         ${
           canEdit
             ? renderButton({ label: "Save posting schedule", type: "submit", variant: "primary" })

@@ -28,6 +28,7 @@ describe("posting schedules", () => {
 
   it("rejects invalid schedule inputs", () => {
     expect(() => buildPostingSchedule({ channel: "linkedin", time: "9:00", weekdays: ["MON"] })).toThrow(PostingScheduleValidationError);
+    expect(() => buildPostingSchedule({ channel: "linkedin", time: "09:07", weekdays: ["MON"] })).toThrow("15-minute publishing poll");
     expect(() => buildPostingSchedule({ channel: "linkedin", time: "09:00", weekdays: [] })).toThrow(PostingScheduleValidationError);
   });
 
@@ -47,6 +48,13 @@ describe("posting schedules", () => {
   it("falls back to defaults when stored schedules are invalid", async () => {
     const db = createTestDatabase();
     seedStateEntry(db, "posting_schedules_v1", [{ channel: "linkedin", cron: "bad cron" }]);
+
+    await expect(loadPostingSchedules(db)).resolves.toEqual(getDefaultPostingSchedules());
+  });
+
+  it("falls back to defaults when stored schedules do not align with the publishing poll", async () => {
+    const db = createTestDatabase();
+    seedStateEntry(db, "posting_schedules_v1", [{ channel: "linkedin", cron: "7 9 * * MON" }]);
 
     await expect(loadPostingSchedules(db)).resolves.toEqual(getDefaultPostingSchedules());
   });
