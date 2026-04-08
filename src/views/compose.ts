@@ -1,16 +1,33 @@
 import type { ChannelConnection } from "../channels";
+import type { QueuedPost } from "../publishing";
+import type { ChannelPostingSchedule } from "../schedule";
 import { renderQueuedPostsSection, renderStatGrid } from "./cards";
 import { renderLinkButton, renderPanel, renderSectionHeader } from "./components";
 import { buildComposerDrafts, renderComposeDraftPanels, renderDraftTabs, resolveDraftEntries } from "./draft-editor";
 import { HOME_PAGE_SCRIPT } from "./home-ui";
 import { renderWorkspacePage, type SessionUser } from "./layout";
+import { renderQueuedPosts } from "./queued-posts";
+import { escapeHtml } from "./shared";
 
 interface ComposePageOptions {
   connections: ChannelConnection[];
+  postingSchedules?: ChannelPostingSchedule[];
+  queueError?: string;
+  queueSaved?: boolean;
+  queuedPosts?: QueuedPost[];
+  publishingTodayCount?: number;
   user: SessionUser;
 }
 
-export function renderComposePage({ connections, user }: ComposePageOptions): string {
+export function renderComposePage({
+  connections,
+  postingSchedules = [],
+  publishingTodayCount = 0,
+  queueError,
+  queueSaved,
+  queuedPosts = [],
+  user,
+}: ComposePageOptions): string {
   const draftEntries = resolveDraftEntries(buildComposerDrafts(connections));
 
   return renderWorkspacePage({
@@ -27,6 +44,12 @@ export function renderComposePage({ connections, user }: ComposePageOptions): st
         ${
           draftEntries.length > 0
             ? `<div class="mt-5 grid gap-4">
+          ${
+            queueSaved
+              ? '<p class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">Post queued for the next eligible publishing slot.</p>'
+              : ""
+          }
+          ${queueError ? `<p class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">${escapeHtml(queueError)}</p>` : ""}
           <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3" role="tablist" aria-label="Draft channels">
             ${renderDraftTabs(draftEntries, "draft")}
           </div>
@@ -43,8 +66,8 @@ export function renderComposePage({ connections, user }: ComposePageOptions): st
           ${renderPanel(`
             <h2 class="text-lg font-semibold tracking-[-0.02em]">Queue preview</h2>
             ${renderStatGrid([
-              { label: "Queued", value: "0", valueAttributes: "data-metric-queued" },
-              { label: "Publishing today", value: "0", valueAttributes: "data-metric-today" },
+              { label: "Queued", value: String(queuedPosts.length), valueAttributes: "data-metric-queued" },
+              { label: "Publishing today", value: String(publishingTodayCount), valueAttributes: "data-metric-today" },
               {
                 content: `<p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Queue view</p>${renderLinkButton({ className: "mt-2", href: "/", label: "Return to queue", variant: "inline" })}`,
               },
@@ -52,13 +75,14 @@ export function renderComposePage({ connections, user }: ComposePageOptions): st
           `)}
         </section>
         ${renderQueuedPostsSection({
-          description: "Posts queued locally from this compose session.",
+          description: "Queued posts now persist on the server and publish from the saved channel schedule.",
           emptyText: "No posts are queued yet.",
+          postsMarkup: renderQueuedPosts(queuedPosts, postingSchedules, { canEdit: user.role !== "readonly" }),
           title: "Queued posts",
         })}
       </section>
     </div>`,
-    description: "Draft posts, attach media, and preview the local queue.",
+    description: "Draft posts and queue them for the next eligible publishing slot.",
     title: "Compose",
     user,
   });

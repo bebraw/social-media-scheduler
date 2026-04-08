@@ -6,20 +6,21 @@
 
 The scheduler now has separate queue, compose, and history surfaces, but it still needs a durable way to express when each channel should publish.
 
-Operators need to adjust that cadence per channel before the real publishing adapters exist, and the saved format should stay close to the Cloudflare-native scheduled runtime instead of inventing a custom rule language.
+Operators need to adjust that cadence per channel in a way the scheduled runtime can evaluate directly, and the saved format should stay close to the Cloudflare-native runtime instead of inventing a custom rule language.
 
 ### Architecture
 
 - **Entry points:** authenticated `GET /` renders the schedule editor for configured providers and authenticated `POST /posting-schedule` persists updates.
 - **Source layout:** `src/schedule/` owns the per-channel schedule model, D1 `app_state` persistence, and Cloudflare cron mapping. `src/views/posting-schedule.ts` renders the editor used on the Queue page.
 - **Data model:** D1 `app_state` stores one `posting_schedules_v1` entry containing per-channel Cloudflare-cron-compatible expressions. The UI derives weekday and UTC time controls from that stored form.
-- **Deployment boundary:** saved schedules do not mutate `wrangler.jsonc` or deployed Cron Triggers automatically. Operators must sync the saved cron expressions into deployment config separately.
+- **Deployment boundary:** saved schedules do not mutate `wrangler.jsonc` automatically. The deployed Worker keeps a fixed publishing poll plus daily backup cron, and the scheduled runtime evaluates the saved per-channel schedule state inside that fixed poller.
 
 ### Anti-Patterns
 
 - Do not add a dedicated scheduler config table before a concrete workflow requires it.
 - Do not store posting schedules in an app-specific DSL when Cloudflare cron already matches the target runtime.
 - Do not imply that the authenticated UI can rewrite deployed Wrangler Cron Triggers at runtime.
+- Do not drift the fixed publish poll away from the saved schedule evaluation logic so the UI and scheduled runtime stop matching each other.
 
 ## Contract
 
@@ -28,6 +29,7 @@ Operators need to adjust that cadence per channel before the real publishing ada
 - [ ] The Queue page shows one editable schedule card for each currently configured provider.
 - [ ] Each schedule card exposes weekday selection, a UTC time input, and the derived Cloudflare cron expression.
 - [ ] Saving the form stores the per-channel schedule in D1 `app_state`.
+- [ ] The scheduled Worker runtime evaluates the saved per-channel schedule state during the fixed publishing poll.
 - [ ] Readonly users can view schedules but cannot update them.
 - [ ] Invalid schedule submissions return a visible validation error on the Queue page.
 - [ ] Automated tests cover cron mapping, persistence, route handling, and the browser-visible editor flow.
@@ -39,6 +41,7 @@ Operators need to adjust that cadence per channel before the real publishing ada
 - Every editable channel must keep at least one selected weekday and a valid `HH:MM` UTC time.
 - Queue route auth rules must apply to posting schedule edits too.
 - The queue page must not render schedule cards for providers that are not currently configured in Settings.
+- The fixed publish poll must keep using the saved schedule state as its source of truth.
 - Health output must continue to list the posting schedule endpoint for tooling visibility.
 
 ### Verification
@@ -59,6 +62,12 @@ Operators need to adjust that cadence per channel before the real publishing ada
 - Given: the operator is already authenticated
 - When: they submit the schedule form with valid weekdays and UTC times
 - Then: the Worker stores the resulting Cloudflare cron expressions in D1 `app_state` and redirects back to `/`
+
+**Scenario: Scheduled runtime evaluates a saved channel cadence**
+
+- Given: the Worker has queued posts and saved posting schedules
+- When: the fixed publishing poll runs on a due slot
+- Then: the runtime selects the due channels from saved schedule state instead of reading ad hoc deploy-time cron copies
 
 **Scenario: Readonly user attempts to change the schedule**
 

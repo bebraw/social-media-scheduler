@@ -2,7 +2,16 @@ import { RestliClient } from "linkedin-api-client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTestDatabase, createTestEnv } from "../test-support";
 import { loadEncryptedSecret } from "../secrets";
-import { buildAccessTokenSecretKey, buildRefreshTokenSecretKey, createChannelConnection, loadChannelConnections } from "./index";
+import {
+  buildAccessTokenSecretKey,
+  buildRefreshTokenSecretKey,
+  createChannelConnection,
+  getChannelConnection,
+  listConfiguredProviders,
+  listPublishingChannelConnections,
+  loadChannelConnections,
+  normalizeChannelConnectionDraft,
+} from "./index";
 
 describe("channel connections", () => {
   afterEach(() => {
@@ -160,5 +169,84 @@ describe("channel connections", () => {
     await expect(loadEncryptedSecret(db, buildRefreshTokenSecretKey(connection.id), "dedicated-secret")).resolves.toBe(
       "refresh-token-value",
     );
+  });
+
+  it("loads one connection by id and includes publishing metadata for scheduled runs", async () => {
+    const db = createTestDatabase();
+    vi.spyOn(RestliClient.prototype, "get").mockResolvedValue({
+      data: {
+        id: "abc123",
+        localizedFirstName: "Example",
+        localizedLastName: "Member",
+      },
+    } as unknown as Awaited<ReturnType<RestliClient["get"]>>);
+
+    const connection = await createChannelConnection(
+      db,
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+      }),
+      {
+        channel: "linkedin",
+        label: "Company LinkedIn",
+        accountHandle: "Example Company",
+        accessToken: "access-token-value",
+        refreshToken: "",
+      },
+    );
+
+    await expect(getChannelConnection(db, connection.id)).resolves.toEqual(connection);
+    await expect(getChannelConnection(db, "missing-id")).resolves.toBeNull();
+    await expect(listPublishingChannelConnections(db)).resolves.toEqual([
+      expect.objectContaining({
+        accessTokenSecretKey: buildAccessTokenSecretKey(connection.id),
+        hasRefreshToken: false,
+        id: connection.id,
+        refreshTokenSecretKey: null,
+      }),
+    ]);
+    expect(listConfiguredProviders([connection, { ...connection, id: "two", channel: "x" }])).toEqual(["linkedin", "x"]);
+  });
+
+  it("rejects incomplete connection drafts before hitting a provider adapter", () => {
+    expect(() =>
+      normalizeChannelConnectionDraft({
+        channel: "mastodon",
+        label: "",
+        accountHandle: "",
+        accessToken: "",
+        refreshToken: "",
+      }),
+    ).toThrow("Choose a supported channel for the connection.");
+
+    expect(() =>
+      normalizeChannelConnectionDraft({
+        channel: "linkedin",
+        label: "",
+        accountHandle: "Example Company",
+        accessToken: "token",
+        refreshToken: "",
+      }),
+    ).toThrow("Add a label so this connection is easy to identify later.");
+
+    expect(() =>
+      normalizeChannelConnectionDraft({
+        channel: "linkedin",
+        label: "Company LinkedIn",
+        accountHandle: "",
+        accessToken: "token",
+        refreshToken: "",
+      }),
+    ).toThrow("Add a handle or profile label for the connected account.");
+
+    expect(() =>
+      normalizeChannelConnectionDraft({
+        channel: "linkedin",
+        label: "Company LinkedIn",
+        accountHandle: "Example Company",
+        accessToken: "",
+        refreshToken: "",
+      }),
+    ).toThrow("Add an access token before saving the channel connection.");
   });
 });

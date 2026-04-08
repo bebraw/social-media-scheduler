@@ -1,7 +1,7 @@
 import type { ChannelConnection } from "../channels";
 import { CHANNEL_CONSTRAINTS, describeUsage, type ChannelConstraint, type QueueChannel } from "../queue/constraints";
 import { renderButton } from "./components";
-import { escapeHtml, renderAttachmentComposer } from "./shared";
+import { escapeHtml } from "./shared";
 
 export interface ComposerDraft {
   accountHandle: string;
@@ -105,9 +105,12 @@ export function renderComposeDraftPanels(entries: DraftEntry[]): string {
       const isSelected = index === 0;
 
       return renderDraftPanel({
+        beforeEditor: `<form method="post" action="/compose/queue">
+          <input type="hidden" name="connectionId" value="${escapeHtml(draft.id)}">`,
         constraint,
         draft,
         editorLabel: `${draft.label} post copy`,
+        inputName: "body",
         panelIdPrefix: "draft",
         selected: isSelected,
         sideContent: `${renderConstraintCard(constraint.limitLabel, usage.label)}
@@ -115,11 +118,12 @@ export function renderComposeDraftPanels(entries: DraftEntry[]): string {
             <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Channel note</p>
             <p class="mt-2 text-sm leading-6 text-app-text-soft">${escapeHtml(constraint.notes)}</p>
           </div>
-          ${renderAttachmentComposer({ channelName: draft.label, serverMode: false })}
-          ${renderSlotSelector(draft.label, draft.slot)}
+          <div class="rounded-xl border border-app-line bg-app-canvas/60 px-4 py-3">
+            <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Scheduling</p>
+            <p class="mt-2 text-sm leading-6 text-app-text-soft">Queued posts publish on the saved ${escapeHtml(draft.accent)} posting schedule. New items go to the next eligible slot automatically.</p>
+          </div>
           <div class="flex flex-wrap gap-3 pt-2">
-            ${renderButton({ attributes: 'data-queue-button data-queue-mode="client"', label: "Queue post", variant: "primary" })}
-            ${renderButton({ className: "bg-white hover:bg-app-canvas", label: "Save draft" })}
+            ${renderButton({ label: "Queue for next slot", type: "submit", variant: "primary" })}
           </div>`,
         statusClass: buildUsageStateClass(usage.state),
         statusLabel: usage.state === "over" ? "Over limit" : usage.state === "warning" ? "Close to limit" : "Ready",
@@ -224,17 +228,4 @@ function renderDraftPanel(options: {
         </div>
         ${beforeEditor ? "</form>" : ""}
       </section>`;
-}
-
-function renderSlotSelector(channelName: string, slot: string, fieldName?: string): string {
-  return `<label class="grid gap-2 text-sm font-medium">
-    <span>Queue slot</span>
-    <select class="rounded-xl border border-app-line bg-white px-4 py-3 text-sm text-app-text outline-none transition focus:border-app-accent focus:ring-2 focus:ring-app-accent/10" ${
-      fieldName ? `name="${fieldName}"` : ""
-    } data-channel-slot aria-label="${escapeHtml(channelName)} queue slot">
-      <option>${escapeHtml(slot)}</option>
-      <option>Tomorrow, 09:00</option>
-      <option>Tomorrow, 13:00</option>
-    </select>
-  </label>`;
 }

@@ -5,6 +5,7 @@ import { getChannelConstraint, type QueueChannel } from "../queue/constraints";
 import { deleteEncryptedSecret, resolveAppEncryptionSecret, saveEncryptedSecret } from "../secrets";
 
 interface ChannelConnectionRow {
+  access_token_secret_key: string;
   account_handle: string;
   channel: QueueChannel;
   created_at: string;
@@ -26,6 +27,11 @@ export interface ChannelConnection {
   id: string;
   label: string;
   updatedAt: string;
+}
+
+export interface PublishingChannelConnection extends ChannelConnection {
+  accessTokenSecretKey: string;
+  refreshTokenSecretKey: string | null;
 }
 
 export interface ChannelConnectionDraft {
@@ -56,7 +62,7 @@ export function getDefaultChannelConnectionDraft(): ChannelConnectionDraft {
 export async function loadChannelConnections(db: D1Database): Promise<ChannelConnection[]> {
   const result = await db
     .prepare(
-      "SELECT id, channel, label, account_handle, refresh_token_secret_key, created_at, updated_at FROM channel_connections ORDER BY channel ASC, label ASC, created_at ASC",
+      "SELECT id, channel, label, account_handle, access_token_secret_key, refresh_token_secret_key, created_at, updated_at FROM channel_connections ORDER BY channel ASC, label ASC, created_at ASC",
     )
     .all<ChannelConnectionRow>();
 
@@ -67,6 +73,49 @@ export async function loadChannelConnections(db: D1Database): Promise<ChannelCon
     hasRefreshToken: typeof row.refresh_token_secret_key === "string" && row.refresh_token_secret_key.length > 0,
     id: row.id,
     label: row.label,
+    updatedAt: row.updated_at,
+  }));
+}
+
+export async function getChannelConnection(db: D1Database, connectionId: string): Promise<ChannelConnection | null> {
+  const row = await db
+    .prepare(
+      "SELECT id, channel, label, account_handle, access_token_secret_key, refresh_token_secret_key, created_at, updated_at FROM channel_connections WHERE id = ?",
+    )
+    .bind(connectionId)
+    .first<ChannelConnectionRow>();
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    accountHandle: row.account_handle,
+    channel: row.channel,
+    createdAt: row.created_at,
+    hasRefreshToken: typeof row.refresh_token_secret_key === "string" && row.refresh_token_secret_key.length > 0,
+    id: row.id,
+    label: row.label,
+    updatedAt: row.updated_at,
+  };
+}
+
+export async function listPublishingChannelConnections(db: D1Database): Promise<PublishingChannelConnection[]> {
+  const result = await db
+    .prepare(
+      "SELECT id, channel, label, account_handle, access_token_secret_key, refresh_token_secret_key, created_at, updated_at FROM channel_connections ORDER BY channel ASC, label ASC, created_at ASC",
+    )
+    .all<ChannelConnectionRow>();
+
+  return result.results.map((row) => ({
+    accessTokenSecretKey: row.access_token_secret_key,
+    accountHandle: row.account_handle,
+    channel: row.channel,
+    createdAt: row.created_at,
+    hasRefreshToken: typeof row.refresh_token_secret_key === "string" && row.refresh_token_secret_key.length > 0,
+    id: row.id,
+    label: row.label,
+    refreshTokenSecretKey: row.refresh_token_secret_key,
     updatedAt: row.updated_at,
   }));
 }

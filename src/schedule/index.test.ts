@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   buildCloudflareCron,
   buildPostingSchedule,
+  findChannelsForTime,
   findChannelsForCron,
   getDefaultPostingSchedules,
+  getNextScheduleOccurrence,
+  isScheduleDueAt,
   loadPostingSchedules,
   PostingScheduleValidationError,
   savePostingSchedules,
@@ -57,5 +60,30 @@ describe("posting schedules", () => {
 
     expect(findChannelsForCron(schedules, "45 10 * * TUE,THU")).toEqual(["linkedin"]);
     expect(findChannelsForCron(schedules, "bad cron")).toEqual([]);
+  });
+
+  it("finds due channels for the current UTC slot", () => {
+    const schedules = [
+      buildPostingSchedule({ channel: "linkedin", time: "10:30", weekdays: ["MON"] }),
+      buildPostingSchedule({ channel: "x", time: "10:45", weekdays: ["MON"] }),
+      buildPostingSchedule({ channel: "bluesky", time: "10:30", weekdays: ["TUE"] }),
+    ];
+
+    expect(findChannelsForTime(schedules, new Date("2026-04-06T10:30:00.000Z"))).toEqual(["linkedin"]);
+  });
+
+  it("checks whether an individual schedule is due", () => {
+    const schedule = buildPostingSchedule({ channel: "linkedin", time: "10:30", weekdays: ["MON", "WED"] });
+
+    expect(isScheduleDueAt(schedule, new Date("2026-04-06T10:30:00.000Z"))).toBe(true);
+    expect(isScheduleDueAt(schedule, new Date("2026-04-06T10:45:00.000Z"))).toBe(false);
+    expect(isScheduleDueAt(schedule, new Date("2026-04-07T10:30:00.000Z"))).toBe(false);
+  });
+
+  it("finds the next weekly occurrence after the current slot", () => {
+    const schedule = buildPostingSchedule({ channel: "linkedin", time: "10:30", weekdays: ["MON", "WED"] });
+
+    expect(getNextScheduleOccurrence(schedule, new Date("2026-04-06T09:00:00.000Z")).toISOString()).toBe("2026-04-06T10:30:00.000Z");
+    expect(getNextScheduleOccurrence(schedule, new Date("2026-04-06T10:30:00.000Z")).toISOString()).toBe("2026-04-08T10:30:00.000Z");
   });
 });

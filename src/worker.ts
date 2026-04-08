@@ -20,6 +20,14 @@ import {
   loadChannelConnections,
 } from "./channels";
 import { loadSentPostHistory } from "./history";
+import {
+  countQueuedPostsPublishingToday,
+  deleteQueuedPost,
+  loadQueuedPosts,
+  publishDueQueuedPosts,
+  QueueValidationError,
+  queuePost,
+} from "./publishing";
 import { listAppRoutes } from "./app-routes";
 import { CHANNEL_CONSTRAINTS } from "./queue/constraints";
 import {
@@ -43,9 +51,9 @@ export default {
   },
   async scheduled(controller: ScheduledControllerLike, env: Env): Promise<void> {
     try {
-      await handleScheduledBackup(controller, env);
+      await handleScheduledTasks(controller, env);
     } catch (error) {
-      console.error("Scheduled backup failed", error);
+      console.error("Scheduled task failed", error);
       throw error;
     }
   },
@@ -154,12 +162,16 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
   if (url.pathname === "/") {
     const postingSchedules = env.DB ? await loadPostingSchedules(env.DB) : getDefaultPostingSchedules();
     const connections = env.DB ? await loadChannelConnections(env.DB) : [];
+    const queuedPosts = env.DB ? await loadQueuedPosts(env.DB) : [];
 
     return htmlResponse(
       renderQueuePage({
         configuredConnections: connections.length,
         connections,
+        publishingTodayCount: countQueuedPostsPublishingToday(queuedPosts, postingSchedules, new Date()),
         postingSchedules,
+        queuedPosts,
+        queueSaved: url.searchParams.get("queue") === "queued",
         scheduleSaved: url.searchParams.get("schedule") === "updated",
         user: sessionUser,
       }),
@@ -288,14 +300,81 @@ export async function handleRequest(request: Request, env: Env = {}): Promise<Re
   }
 
   if (url.pathname === "/compose") {
+    const postingSchedules = env.DB ? await loadPostingSchedules(env.DB) : getDefaultPostingSchedules();
     const connections = env.DB ? await loadChannelConnections(env.DB) : [];
+    const queuedPosts = env.DB ? await loadQueuedPosts(env.DB) : [];
 
     return htmlResponse(
       renderComposePage({
         connections,
+        postingSchedules,
+        publishingTodayCount: countQueuedPostsPublishingToday(queuedPosts, postingSchedules, new Date()),
+        queueSaved: url.searchParams.get("queue") === "queued",
+        queuedPosts,
         user: sessionUser,
       }),
     );
+  }
+
+  if (url.pathname === "/compose/queue" && request.method === "POST") {
+    if (!env.DB) {
+      return new Response("D1 binding is missing.", { status: 500 });
+    }
+    if (isReadonlyUser(sessionUser)) {
+      return new Response("Readonly users cannot queue posts.", { status: 403 });
+    }
+
+    const postingSchedules = await loadPostingSchedules(env.DB);
+    const connections = await loadChannelConnections(env.DB);
+    const queuedPosts = await loadQueuedPosts(env.DB);
+    const formData = await request.formData();
+
+    try {
+      await queuePost(env.DB, connections, {
+        body: String(formData.get("body") || ""),
+        connectionId: String(formData.get("connectionId") || ""),
+      });
+      return redirectResponse("/compose?queue=queued");
+    } catch (error) {
+      const message = error instanceof QueueValidationError ? error.message : "Unable to queue the post.";
+
+      return htmlResponse(
+        renderComposePage({
+          connections,
+          postingSchedules,
+          publishingTodayCount: countQueuedPostsPublishingToday(queuedPosts, postingSchedules, new Date()),
+          queueError: message,
+          queuedPosts,
+          user: sessionUser,
+        }),
+        error instanceof QueueValidationError ? 400 : 500,
+      );
+    }
+  }
+
+  if (url.pathname === "/queue/delete" && request.method === "POST") {
+    if (!env.DB) {
+      return new Response("D1 binding is missing.", { status: 500 });
+    }
+    if (isReadonlyUser(sessionUser)) {
+      return new Response("Readonly users cannot change queued posts.", { status: 403 });
+    }
+
+    const formData = await request.formData();
+    const queuedPostId = String(formData.get("queuedPostId") || "").trim();
+    if (queuedPostId) {
+      await deleteQueuedPost(env.DB, queuedPostId);
+    }
+
+    const referer = request.headers.get("referer");
+    if (referer) {
+      const refererUrl = new URL(referer);
+      if (refererUrl.pathname === "/compose") {
+        return redirectResponse("/compose");
+      }
+    }
+
+    return redirectResponse("/");
   }
 
   if (url.pathname === "/history") {
@@ -336,9 +415,18 @@ async function loadStylesheet(): Promise<string> {
   return await readFile(new URL("../.generated/styles.css", import.meta.url), "utf8");
 }
 
-async function handleScheduledBackup(controller: ScheduledControllerLike, env: Env): Promise<void> {
+async function handleScheduledTasks(controller: ScheduledControllerLike, env: Env): Promise<void> {
   if (!env.DB) {
-    console.warn("Skipping automated backup because the D1 binding is missing.");
+    console.warn("Skipping scheduled work because the D1 binding is missing.");
+    return;
+  }
+
+  const publishResult = await publishDueQueuedPosts(env.DB, env);
+  if (!publishResult.skipped) {
+    console.log(`Scheduled publishing processed: ${publishResult.published} published, ${publishResult.failed} failed`);
+  }
+
+  if (controller.cron !== "30 1 * * *") {
     return;
   }
 

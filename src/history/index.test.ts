@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadSentPostHistory } from "./index";
+import { appendSentPostHistoryEntry, loadSentPostHistory } from "./index";
 import { createTestDatabase, seedStateEntry } from "../test-support";
 
 describe("loadSentPostHistory", () => {
@@ -53,5 +53,33 @@ describe("loadSentPostHistory", () => {
     const history = await loadSentPostHistory(db);
 
     expect(history).toEqual([]);
+  });
+
+  it("appends and sorts new sent history entries", async () => {
+    const db = createTestDatabase();
+    seedStateEntry(db, "sent_post_history_v1", [
+      {
+        id: "older-entry",
+        channel: "linkedin",
+        project: "Older project",
+        body: "Older post",
+        sentAt: "2026-03-10T08:00:00.000Z",
+        outcome: "Published",
+      },
+    ]);
+
+    await appendSentPostHistoryEntry(db, {
+      id: "newer-entry",
+      channel: "x",
+      project: "Queued publish",
+      body: "Newer post",
+      sentAt: "2026-03-12T09:00:00.000Z",
+      outcome: "Published to X",
+    });
+
+    await expect(loadSentPostHistory(db)).resolves.toEqual([
+      expect.objectContaining({ id: "newer-entry" }),
+      expect.objectContaining({ id: "older-entry" }),
+    ]);
   });
 });

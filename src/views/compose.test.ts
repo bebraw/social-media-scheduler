@@ -25,7 +25,7 @@ const connections: ChannelConnection[] = [
 ];
 
 describe("renderComposePage", () => {
-  it("renders the compose page with channel tabs and local queue controls", () => {
+  it("renders the compose page with channel tabs and server queue controls", () => {
     const html = renderComposePage({
       connections,
       user: {
@@ -46,7 +46,8 @@ describe("renderComposePage", () => {
     expect(html).toContain("data-channel-column");
     expect(html).toContain('aria-selected="true"');
     expect(html).toContain("hidden");
-    expect(html).toContain("data-queue-button");
+    expect(html).toContain('action="/compose/queue"');
+    expect(html).toContain("Queue for next slot");
     expect(html).toContain("Queued posts");
     expect(html).not.toContain("Dedicated composer");
     expect(html).not.toContain("Composer flow");

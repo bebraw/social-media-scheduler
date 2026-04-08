@@ -10,12 +10,13 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 
 - local auth so the app is private by default
 - explicit Cloudflare persistence bindings instead of ad hoc storage
+- a real persisted queue plus scheduled publishing runtime
 - scheduled backups that preserve recoverable state as the real scheduler model grows
 
 ### Architecture
 
-- **Entry points:** `wrangler dev` via `src/worker.ts`, authenticated `GET /`, `GET /compose`, `GET /history`, `GET /settings`, `POST /settings/channels`, and `POST /posting-schedule` page routes, `npm run account:create` for auth user management, and the Worker scheduled handler for automated backups
-- **Source layout:** `src/worker.ts` routes requests, `src/auth/` holds auth primitives and D1-backed auth state helpers, `src/backup/` holds the backup export flow, `src/channels/` holds channel connection persistence, `src/history/` holds sent-post history loading for normal routes, `src/queue/` holds channel constraint logic, `src/schedule/` holds posting schedule persistence plus Cloudflare cron mapping helpers, `src/secrets/` holds encrypted D1 secret helpers, `src/api/` holds API handlers, and `src/views/` holds the queue, compose, history, and settings HTML renderers plus the shared interaction script.
+- **Entry points:** `wrangler dev` via `src/worker.ts`, authenticated `GET /`, `GET /compose`, `GET /history`, `GET /settings`, `POST /settings/channels`, `POST /posting-schedule`, `POST /compose/queue`, and `POST /queue/delete` page routes, `npm run account:create` for auth user management, and the Worker scheduled handler for publishing plus automated backups
+- **Source layout:** `src/worker.ts` routes requests, `src/auth/` holds auth primitives and D1-backed auth state helpers, `src/backup/` holds the backup export flow, `src/channels/` holds channel connection persistence, `src/history/` holds sent-post history persistence and loading, `src/publishing/` holds queued-post persistence plus scheduled publish orchestration, `src/queue/` holds channel constraint logic, `src/schedule/` holds posting schedule persistence plus Cloudflare cron mapping helpers, `src/secrets/` holds encrypted D1 secret helpers, `src/api/` holds API handlers, and `src/views/` holds the queue, compose, history, and settings HTML renderers plus the shared interaction script.
 - **Styling pipeline:** `src/tailwind-input.css` compiles to `.generated/styles.css`, which the Worker serves at `/styles.css`.
 - **Data models:** D1 stores `app_users`, `login_attempts`, generic `app_state`, `channel_connections`, and encrypted `app_secrets`. R2 stores backup exports, summaries, and manifests when configured.
 - **Dependencies:** Wrangler provides the Worker runtime, D1, R2, and scheduled triggers; Playwright and Vitest verify the behavior.
@@ -36,13 +37,15 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 - [ ] Authenticated requests to `/` return the default queue page after login without seeded demo data.
 - [ ] Authenticated requests to `/` expose a posting schedule editor only for the currently configured providers.
 - [ ] Authenticated requests to `/compose` return a dedicated composer page with account-specific drafts exposed through a tabbed editor without seeded demo data.
-- [ ] The dedicated composer applies channel-specific copy budgets and lightweight client-side queue interactions.
+- [ ] The dedicated composer applies channel-specific copy budgets and persists queued posts through authenticated server routes.
 - [ ] Authenticated requests to `/history` return a dedicated history page that can filter previously sent posts by configured channel connection and render an empty state when no real history exists.
 - [ ] Authenticated requests to `/settings` return a dedicated settings page that can list multiple saved connections for the same provider.
 - [ ] `POST /settings/channels` validates and stores channel connection metadata in D1 while encrypting token-like fields before persistence.
 - [ ] `POST /posting-schedule` validates and stores the per-channel posting schedule in local D1-backed app state without inventing a separate scheduler config table.
+- [ ] `POST /compose/queue` validates and stores queued posts in local D1-backed app state.
+- [ ] `POST /queue/delete` removes queued posts from local D1-backed app state.
 - [ ] The health route returns stable JSON for smoke tests and tooling.
-- [ ] The scheduled handler writes backup artifacts to R2 when configured and skips when the export content is unchanged.
+- [ ] The scheduled handler publishes due queued posts from saved schedule state and writes backup artifacts during the daily backup window when configured.
 - [ ] The spec is updated in the same change set.
 - [ ] Automated tests cover the critical behavior.
 
@@ -54,10 +57,11 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 - `GET /styles.css` must keep returning the generated stylesheet.
 - `GET /api/health` must keep returning HTTP 200 JSON with `ok: true`.
 - The queue view must keep showing the saved per-provider posting schedule and the derived Cloudflare cron string for each configured provider.
-- The dedicated composer must keep exactly one configured account panel visible at a time while preserving provider-specific limits and queue controls.
+- The dedicated composer must keep exactly one configured account panel visible at a time while preserving provider-specific limits and persisted queue controls.
 - The history page must keep filtering cards on the client without a full page reload while deriving its available filters from configured connections.
 - Posting schedule edits must stay authenticated, require at least one weekday plus a valid UTC time per channel, and reject readonly users.
 - Channel settings must stay authenticated, allow repeated providers such as multiple X accounts, and keep token-like values encrypted at rest.
+- Queued-post persistence must stay shared between the authenticated UI and the scheduled runtime.
 - Session cookies must stay signed with `SESSION_SECRET` and marked `HttpOnly`.
 - Scheduled backups must remain deterministic enough to skip unchanged exports.
 - Unknown routes must return HTTP 404.
@@ -97,7 +101,7 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 
 - Given: the operator is already authenticated
 - When: they navigate to `/compose`
-- Then: they see LinkedIn, X, and Bluesky draft tabs, one visible authoring panel, and local queue preview controls without seeded demo data
+- Then: they see LinkedIn, X, and Bluesky draft tabs, one visible authoring panel, and persisted queue controls without seeded demo data
 
 **Scenario: Operator opens history**
 
@@ -126,8 +130,14 @@ Before planning richer scheduling UI, the repo needs an operational foundation t
 **Scenario: Operator queues a draft from the composer**
 
 - Given: the operator is already authenticated
-- When: they edit a channel draft on `/compose` and click `Queue post`
-- Then: the client-side mock queue prepends that post into the composer queue preview and updates queue metrics without a full page reload
+- When: they edit a channel draft on `/compose` and submit `POST /compose/queue`
+- Then: the Worker stores that post in the persisted queue and the authenticated pages render it back from server state
+
+**Scenario: Scheduled runtime publishes due queued work**
+
+- Given: the Worker has queued posts, saved channel connections, and saved posting schedules
+- When: the fixed publishing poll hits a due slot
+- Then: the scheduled runtime publishes the oldest due queued post per connection before the daily backup window runs
 
 **Scenario: Tooling checks app health**
 

@@ -1,10 +1,11 @@
 import { RestliClient } from "linkedin-api-client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { loadQueuedPosts } from "./publishing";
 import { loadEncryptedSecret } from "./secrets";
 import worker, { handleRequest } from "./worker";
 import { createTestDatabase, createTestEnv, createTestR2Bucket, ensureGeneratedStylesheet, seedAuthUser } from "./test-support";
 import { createSessionToken, SESSION_COOKIE, SESSION_TTL_SECONDS } from "./auth";
-import { createChannelConnection } from "./channels";
+import { createChannelConnection, loadChannelConnections } from "./channels";
 import { loadPostingSchedules } from "./schedule";
 
 ensureGeneratedStylesheet();
@@ -726,7 +727,7 @@ describe("worker", () => {
     expect(body).toContain("Compose");
     expect(body).toContain("Channel drafts");
     expect(body).toContain("Company LinkedIn");
-    expect(body).toContain("data-queue-button");
+    expect(body).toContain('action="/compose/queue"');
   });
 
   it("renders the authenticated history page", async () => {
@@ -772,6 +773,223 @@ describe("worker", () => {
     expect(body).toContain("No sent posts are available yet.");
   });
 
+  it("queues posts through the authenticated compose endpoint", async () => {
+    const db = createTestDatabase();
+    mockLinkedInProfileLookup();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    await createChannelConnection(
+      db,
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+      }),
+      {
+        channel: "linkedin",
+        label: "Company LinkedIn",
+        accountHandle: "Example Company",
+        accessToken: "access-token-value",
+        refreshToken: "",
+      },
+    );
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+    const connection = (await loadChannelConnections(db))[0];
+
+    const response = await handleRequest(
+      new Request("http://example.com/compose/queue", {
+        method: "POST",
+        body: new URLSearchParams({
+          body: "Queue this LinkedIn update.",
+          connectionId: connection?.id || "",
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/compose?queue=queued");
+    await expect(loadQueuedPosts(db)).resolves.toEqual([expect.objectContaining({ body: "Queue this LinkedIn update." })]);
+  });
+
+  it("rejects queued post submissions from readonly users", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Readonly Scheduler",
+      password: "test-password-123",
+      role: "readonly",
+    });
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Readonly Scheduler",
+      role: "readonly",
+    });
+
+    const response = await handleRequest(
+      new Request("http://example.com/compose/queue", {
+        method: "POST",
+        body: new URLSearchParams({
+          body: "Queue this LinkedIn update.",
+          connectionId: "missing-connection",
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.text()).resolves.toContain("Readonly users cannot queue posts.");
+  });
+
+  it("rerenders the compose page when queue validation fails", async () => {
+    const db = createTestDatabase();
+    mockLinkedInProfileLookup();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    await createChannelConnection(
+      db,
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+      }),
+      {
+        channel: "linkedin",
+        label: "Company LinkedIn",
+        accountHandle: "Example Company",
+        accessToken: "access-token-value",
+        refreshToken: "",
+      },
+    );
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+    const connection = (await loadChannelConnections(db))[0];
+
+    const response = await handleRequest(
+      new Request("http://example.com/compose/queue", {
+        method: "POST",
+        body: new URLSearchParams({
+          body: "",
+          connectionId: connection?.id || "",
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.text()).resolves.toContain("Write post copy before queueing it.");
+  });
+
+  it("deletes queued posts and returns to the compose view when requested there", async () => {
+    const db = createTestDatabase();
+    mockLinkedInProfileLookup();
+    await seedAuthUser(db, {
+      name: "Scheduler Admin",
+      password: "test-password-123",
+      role: "editor",
+    });
+    await createChannelConnection(
+      db,
+      createTestEnv({
+        APP_ENCRYPTION_SECRET: "dedicated-secret",
+      }),
+      {
+        channel: "linkedin",
+        label: "Company LinkedIn",
+        accountHandle: "Example Company",
+        accessToken: "access-token-value",
+        refreshToken: "",
+      },
+    );
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Scheduler Admin",
+      role: "editor",
+    });
+    const connection = (await loadChannelConnections(db))[0];
+
+    await handleRequest(
+      new Request("http://example.com/compose/queue", {
+        method: "POST",
+        body: new URLSearchParams({
+          body: "Queue this LinkedIn update.",
+          connectionId: connection?.id || "",
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    const queuedPost = (await loadQueuedPosts(db))[0];
+    const response = await handleRequest(
+      new Request("http://example.com/queue/delete", {
+        method: "POST",
+        body: new URLSearchParams({
+          queuedPostId: queuedPost?.id || "",
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+          referer: "http://example.com/compose",
+        },
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/compose");
+    await expect(loadQueuedPosts(db)).resolves.toEqual([]);
+  });
+
+  it("rejects queued post deletions from readonly users", async () => {
+    const db = createTestDatabase();
+    await seedAuthUser(db, {
+      name: "Readonly Scheduler",
+      password: "test-password-123",
+      role: "readonly",
+    });
+    const sessionToken = await createSessionToken("test-session-secret", SESSION_TTL_SECONDS, {
+      name: "Readonly Scheduler",
+      role: "readonly",
+    });
+
+    const response = await handleRequest(
+      new Request("http://example.com/queue/delete", {
+        method: "POST",
+        body: new URLSearchParams({
+          queuedPostId: "missing-queued-post",
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          cookie: `${SESSION_COOKIE}=${sessionToken}`,
+        },
+      }),
+      createTestEnv({ DB: db }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.text()).resolves.toContain("Readonly users cannot change queued posts.");
+  });
+
   it("returns a JSON health response", async () => {
     const response = await handleRequest(new Request("http://example.com/api/health"), createTestEnv());
 
@@ -780,7 +998,18 @@ describe("worker", () => {
     await expect(response.json()).resolves.toEqual({
       ok: true,
       name: "social-media-scheduler",
-      routes: ["/", "/compose", "/history", "/settings", "/settings/channels", "/posting-schedule", "/login", "/api/health"],
+      routes: [
+        "/",
+        "/compose",
+        "/compose/queue",
+        "/history",
+        "/queue/delete",
+        "/settings",
+        "/settings/channels",
+        "/posting-schedule",
+        "/login",
+        "/api/health",
+      ],
     });
   });
 

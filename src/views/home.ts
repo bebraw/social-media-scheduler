@@ -1,4 +1,5 @@
 import type { ChannelConnection } from "../channels";
+import type { QueuedPost } from "../publishing";
 import { listConfiguredProviders } from "../channels";
 import { getChannelConstraint } from "../queue/constraints";
 import type { ChannelPostingSchedule } from "../schedule";
@@ -7,11 +8,15 @@ import { renderLinkButton, renderPanel, renderPill, renderSectionHeader } from "
 import { HOME_PAGE_SCRIPT } from "./home-ui";
 import { renderWorkspacePage, type SessionUser } from "./layout";
 import { renderPostingSchedulePanel } from "./posting-schedule";
+import { renderQueuedPosts } from "./queued-posts";
 
 interface QueuePageOptions {
   configuredConnections: number;
   connections: ChannelConnection[];
+  publishingTodayCount?: number;
   postingSchedules: ChannelPostingSchedule[];
+  queuedPosts?: QueuedPost[];
+  queueSaved?: boolean;
   scheduleError?: string;
   scheduleSaved?: boolean;
   user: SessionUser;
@@ -20,7 +25,10 @@ interface QueuePageOptions {
 export function renderQueuePage({
   configuredConnections,
   connections,
+  publishingTodayCount = 0,
   postingSchedules,
+  queuedPosts = [],
+  queueSaved,
   scheduleError,
   scheduleSaved,
   user,
@@ -37,9 +45,14 @@ export function renderQueuePage({
             description: "Review what is already queued.",
             title: "Queue status",
           })}
+          ${
+            queueSaved
+              ? '<p class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">Queued posts publish automatically from the saved channel schedule.</p>'
+              : ""
+          }
           ${renderStatGrid([
-            { label: "Queued", value: "0", valueAttributes: "data-metric-queued" },
-            { label: "Publishing today", value: "0", valueAttributes: "data-metric-today" },
+            { label: "Queued", value: String(queuedPosts.length), valueAttributes: "data-metric-queued" },
+            { label: "Publishing today", value: String(publishingTodayCount), valueAttributes: "data-metric-today" },
             { label: "Configured connections", value: String(configuredConnections) },
           ])}
         `)}
@@ -73,6 +86,7 @@ export function renderQueuePage({
       ${renderQueuedPostsSection({
         description: "Posts lined up across the current queue.",
         emptyText: "No posts are queued yet.",
+        postsMarkup: renderQueuedPosts(queuedPosts, visibleSchedules, { canEdit: user.role !== "readonly" }),
         title: "Queued posts",
       })}
     </div>`,

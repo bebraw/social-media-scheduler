@@ -48,12 +48,12 @@ test("requires login before showing the default queue view", async ({ page }) =>
   await personalXTab.click();
   await expect(personalXTab).toHaveAttribute("aria-selected", "true");
   await expect(page.getByLabel(`${SEEDED_CONNECTION_LABEL} post copy`)).toBeVisible();
-  await page.getByLabel(`${SEEDED_CONNECTION_LABEL} post copy`).fill("Queue this X draft for the afternoon slot.");
-  await page.getByLabel(`${SEEDED_CONNECTION_LABEL} queue slot`).selectOption("Tomorrow, 13:00");
-  await page.getByRole("button", { name: "Queue post" }).click();
+  await page.getByLabel(`${SEEDED_CONNECTION_LABEL} post copy`).fill("Queue this X draft for the next publishing slot.");
+  await page.getByRole("button", { name: "Queue for next slot" }).click();
+  await expect(page).toHaveURL(/\/compose\?queue=queued$/);
 
   await expect(page.locator("[data-metric-queued]")).toHaveText("1");
-  await expect(page.locator("[data-queued-posts] article").first()).toContainText("Queue this X draft for the afternoon slot.");
+  await expect(page.locator("[data-queued-posts] article").first()).toContainText("Queue this X draft for the next publishing slot.");
 
   await page.getByRole("link", { name: "History", exact: true }).click();
   await expect(page).toHaveURL(/\/history$/);
@@ -69,7 +69,18 @@ test("serves the health endpoint", async ({ request }) => {
   await expect(response.json()).resolves.toEqual({
     ok: true,
     name: "social-media-scheduler",
-    routes: ["/", "/compose", "/history", "/settings", "/settings/channels", "/posting-schedule", "/login", "/api/health"],
+    routes: [
+      "/",
+      "/compose",
+      "/compose/queue",
+      "/history",
+      "/queue/delete",
+      "/settings",
+      "/settings/channels",
+      "/posting-schedule",
+      "/login",
+      "/api/health",
+    ],
   });
 });
 

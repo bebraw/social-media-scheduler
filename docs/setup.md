@@ -1,6 +1,6 @@
 # Setup
 
-This guide covers the local setup flow for running the private scheduler foundation for the first time.
+This guide covers the local setup flow for running the private scheduler for the first time.
 
 ## Prerequisites
 
@@ -98,6 +98,7 @@ npx wrangler r2 bucket create social-media-scheduler-backups
 The checked-in [`wrangler.jsonc`](../wrangler.jsonc) already includes:
 
 - `BACKUP_BUCKET` bound to `social-media-scheduler-backups`
+- fixed publishing poll cron `*/15 * * * *`
 - daily cron `30 1 * * *`
 - `BACKUP_PREFIX=automated-backups`
 
@@ -114,6 +115,7 @@ Open the local URL shown by Wrangler, usually `http://127.0.0.1:8787`.
 After signing in, the app opens on the default `Queue` view at `/`. Use `/compose` for the dedicated post composer.
 Use `/settings` to add one channel connection per account or profile when you need multiple accounts on the same provider.
 The authenticated Queue, Compose, and History views stay mostly empty until at least one channel connection is configured.
+Queued posts publish from the saved posting schedule during the fixed 15-minute Worker poll.
 
 ## First Run Checklist
 

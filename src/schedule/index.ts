@@ -127,6 +127,39 @@ export function findChannelsForCron(schedules: ChannelPostingSchedule[], cron: s
   return schedules.filter((schedule) => schedule.cron === normalized).map((schedule) => schedule.channel);
 }
 
+export function findChannelsForTime(schedules: ChannelPostingSchedule[], date: Date): QueueChannel[] {
+  return schedules.filter((schedule) => isScheduleDueAt(schedule, date)).map((schedule) => schedule.channel);
+}
+
+export function isScheduleDueAt(schedule: ChannelPostingSchedule, date: Date): boolean {
+  return schedule.weekdays.includes(getUtcWeekday(date)) && schedule.time === formatUtcTime(date);
+}
+
+export function getNextScheduleOccurrence(schedule: ChannelPostingSchedule, fromDate: Date): Date {
+  for (let offset = 0; offset < 14; offset += 1) {
+    const candidate = new Date(fromDate.getTime());
+    candidate.setUTCDate(candidate.getUTCDate() + offset);
+    candidate.setUTCHours(0, 0, 0, 0);
+
+    const weekday = getUtcWeekday(candidate);
+    if (!schedule.weekdays.includes(weekday)) {
+      continue;
+    }
+
+    const [hourText, minuteText] = schedule.time.split(":");
+    candidate.setUTCHours(Number(hourText || "0"), Number(minuteText || "0"), 0, 0);
+    if (candidate.getTime() > fromDate.getTime()) {
+      return candidate;
+    }
+  }
+
+  const [fallbackHourText, fallbackMinuteText] = schedule.time.split(":");
+  const fallback = new Date(fromDate.getTime());
+  fallback.setUTCDate(fallback.getUTCDate() + 7);
+  fallback.setUTCHours(Number(fallbackHourText || "0"), Number(fallbackMinuteText || "0"), 0, 0);
+  return fallback;
+}
+
 function buildCompleteScheduleList(schedules: ChannelPostingSchedule[]): ChannelPostingSchedule[] {
   const byChannel = new Map(schedules.map((schedule) => [schedule.channel, schedule]));
 
@@ -224,4 +257,14 @@ function isQueueChannel(value: unknown): value is QueueChannel {
 
 function getChannelLabel(channel: QueueChannel): string {
   return CHANNEL_CONSTRAINTS.find((constraint) => constraint.id === channel)?.name || channel;
+}
+
+function getUtcWeekday(date: Date): PostingScheduleWeekday {
+  const index = date.getUTCDay();
+  const ordered: PostingScheduleWeekday[] = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  return ordered[index] || "MON";
+}
+
+function formatUtcTime(date: Date): string {
+  return `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")}`;
 }

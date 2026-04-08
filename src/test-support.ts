@@ -360,6 +360,26 @@ class TestPreparedStatement implements D1PreparedStatement {
         : [];
     }
 
+    if (this.normalizedQuery.includes("from channel_connections where id = ?")) {
+      const [connectionId] = this.bindings as [string];
+      const connection = this.state.channelConnections.get(connectionId);
+
+      return connection
+        ? [
+            {
+              id: connection.id,
+              channel: connection.channel,
+              label: connection.label,
+              account_handle: connection.accountHandle,
+              access_token_secret_key: connection.accessTokenSecretKey,
+              refresh_token_secret_key: connection.refreshTokenSecretKey,
+              created_at: connection.createdAt,
+              updated_at: connection.updatedAt,
+            },
+          ]
+        : [];
+    }
+
     throw new Error(`Unsupported select query in test database: ${this.normalizedQuery}`);
   }
 }

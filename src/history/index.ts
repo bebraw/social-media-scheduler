@@ -18,11 +18,10 @@ interface AppStateRow {
   value_json: string;
 }
 
+const HISTORY_STATE_KEY = SENT_POST_HISTORY_STATE_KEY;
+
 export async function loadSentPostHistory(db: D1Database): Promise<SentPostHistoryEntry[]> {
-  const row = await db
-    .prepare("SELECT value_json FROM app_state WHERE state_key = ?")
-    .bind(SENT_POST_HISTORY_STATE_KEY)
-    .first<AppStateRow>();
+  const row = await db.prepare("SELECT value_json FROM app_state WHERE state_key = ?").bind(HISTORY_STATE_KEY).first<AppStateRow>();
 
   if (!row?.value_json) {
     return [];
@@ -72,4 +71,16 @@ function isQueueChannel(value: unknown): value is QueueChannel {
 
 function sortSentPostHistory(entries: SentPostHistoryEntry[]): SentPostHistoryEntry[] {
   return [...entries].sort((left, right) => right.sentAt.localeCompare(left.sentAt));
+}
+
+export async function appendSentPostHistoryEntry(db: D1Database, entry: SentPostHistoryEntry): Promise<void> {
+  const history = await loadSentPostHistory(db);
+  const nextHistory = sortSentPostHistory([entry, ...history]).slice(0, 500);
+
+  await db
+    .prepare(
+      "INSERT INTO app_state (state_key, value_json) VALUES (?, ?) ON CONFLICT(state_key) DO UPDATE SET value_json = excluded.value_json",
+    )
+    .bind(HISTORY_STATE_KEY, JSON.stringify(nextHistory))
+    .run();
 }

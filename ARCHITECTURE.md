@@ -10,6 +10,7 @@ Use this file for global constraints. Use feature specs under `specs/` for domai
 - Keep the scheduler domain model intentionally abstract until a concrete adapter or workflow needs a stronger schema.
 - Keep the local development route surface aligned with the production route surface so verification exercises the same behavior in both environments.
 - Persist operator-defined posting schedules in D1 `app_state` as Cloudflare-cron-compatible data instead of inventing a separate scheduler config store too early.
+- Persist queued posts and sent-post history in D1-backed state so the authenticated UI and scheduled runtime share the same source of truth.
 - Store channel connection metadata in dedicated D1 rows and store adapter credentials only as encrypted `app_secrets` values.
 - Keep social-provider SDKs behind provider adapter modules instead of calling them directly from routes or views.
 - Treat repo documentation as living context that should evolve with the code.
@@ -24,7 +25,8 @@ Use this file for global constraints. Use feature specs under `specs/` for domai
 - Node and npm versions are pinned through `package.json`.
 - D1 is the baseline persistence layer for local auth and generic app state.
 - The Worker runtime must keep Cloudflare `nodejs_compat` enabled because the selected social-provider SDKs rely on Node built-ins such as `crypto`.
-- The app must not pretend it can rewrite deployed Wrangler Cron Triggers at runtime; deployment config and saved schedule state stay explicit and separate.
+- The Worker uses fixed deployment-managed cron triggers for a publishing poll and daily backup window; saved posting schedules drive runtime behavior inside that fixed poller instead of rewriting deployed triggers.
+- The app must not pretend it can rewrite deployed Wrangler Cron Triggers at runtime; deployment config stays explicit even when saved schedule state drives publish decisions inside the running Worker.
 - Session signing secrets stay in `.dev.vars` and must not be committed or copied into D1 backups.
 - `APP_ENCRYPTION_SECRET` should stay in `.dev.vars` or the deployed secret manager and must not be stored in D1 or copied into R2 backups.
 - Optional scheduled backups write application snapshots to R2 and should be treated as sensitive operational data.

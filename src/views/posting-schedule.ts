@@ -32,7 +32,7 @@ export function renderPostingSchedulePanel({ canEdit, error, saved, schedules }:
         : `<form class="mt-5 grid gap-4" method="post" action="/posting-schedule">
       ${schedules.map((schedule) => renderPostingScheduleCard(schedule, canEdit)).join("")}
       <div class="flex flex-col gap-3 border-t border-app-line pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <p class="text-sm leading-6 text-app-text-soft">To activate these schedules in deployed scheduled events, copy the saved cron expressions into your Wrangler Cron Triggers.</p>
+        <p class="text-sm leading-6 text-app-text-soft">These saved schedules now drive the production publishing poller directly. Keep the fixed Worker cron triggers in deployment config and edit channel timing here.</p>
         ${
           canEdit
             ? renderButton({ label: "Save posting schedule", type: "submit", variant: "primary" })
